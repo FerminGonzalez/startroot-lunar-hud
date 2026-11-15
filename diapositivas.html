@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<!--
+  Presentación de 7 diapositivas (incluidas portada e introducción).
+  Maquetación y redacción asistidas por SI; SIN imágenes generadas por SI
+  (la captura es real, tomada del visor en ejecución). Sin marcas de agencias.
+-->
+<html lang="es">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<meta name="generator" content="Asistido por SI (LLM): redacción y maquetación; ver AI_USAGE.md" />
+<link rel="icon" href="data:," />
+<title>Visor Lunar — StartRoot · Presentación (7 diapositivas)</title>
+<style>
+  :root { --bg:#05070d; --ink:#eaf2ff; --dim:#8fa3bf; --amber:#ffb300; --cyan:#00e5ff; --green:#39d98a; --red:#ff5252; --line:rgba(120,160,220,.22); }
+  * { box-sizing:border-box; margin:0; padding:0; }
+  html,body { height:100%; background:var(--bg); color:var(--ink); font-family:"Segoe UI",system-ui,sans-serif; overflow:hidden; }
+  body::before { content:""; position:fixed; inset:0; background:radial-gradient(ellipse at 78% 12%, rgba(0,229,255,.07), transparent 55%), radial-gradient(ellipse at 8% 90%, rgba(255,179,0,.06), transparent 50%); pointer-events:none; }
+  .deck { position:relative; height:100%; }
+  .slide { position:absolute; inset:0; padding:5vh 7vw; display:none; flex-direction:column; justify-content:center; }
+  .slide.on { display:flex; animation:in .45s ease both; }
+  @keyframes in { from { opacity:0; transform:translateY(18px); } to { opacity:1; transform:none; } }
+  .kicker { font:600 12px/1.2 ui-monospace,Consolas,monospace; letter-spacing:.32em; color:var(--cyan); text-transform:uppercase; margin-bottom:18px; }
+  .num { font:700 clamp(56px,11vw,130px)/.9 ui-monospace,Consolas,monospace; letter-spacing:-.06em; color:var(--amber); }
+  h1 { font-size:clamp(40px,8.2vw,108px); line-height:.98; letter-spacing:-.045em; font-weight:800; }
+  h1 em { font-style:normal; color:var(--cyan); }
+  h2 { font-size:clamp(30px,5.2vw,68px); line-height:1.03; letter-spacing:-.035em; font-weight:800; margin-bottom:22px; }
+  p.lead { font-size:clamp(17px,2.1vw,28px); line-height:1.5; color:var(--ink); max-width:62ch; }
+  p.sub { font-size:clamp(14px,1.5vw,19px); line-height:1.6; color:var(--dim); max-width:70ch; margin-top:14px; }
+  .tag { display:inline-block; font:600 12px/1 ui-monospace,Consolas,monospace; letter-spacing:.14em; color:var(--amber); border:1px solid var(--amber); padding:8px 12px; margin-top:26px; }
+  .grid3 { display:grid; grid-template-columns:repeat(3,1fr); gap:18px; margin-top:38px; }
+  .card { border:1px solid var(--line); border-left:3px solid var(--cyan); padding:22px; background:rgba(10,18,32,.55); }
+  .card b { display:block; font:700 clamp(26px,3.6vw,44px)/1 ui-monospace,Consolas,monospace; color:var(--cyan); margin-bottom:10px; }
+  .card span { font-size:15px; line-height:1.45; color:var(--dim); }
+  .split { display:grid; grid-template-columns:1.05fr .95fr; gap:34px; align-items:center; }
+  .split img { width:100%; border:1px solid var(--line); filter:saturate(1.1); }
+  figure figcaption { font:500 11px/1.4 ui-monospace,Consolas,monospace; color:var(--dim); margin-top:8px; letter-spacing:.06em; }
+  table { width:100%; border-collapse:collapse; margin-top:16px; font-size:clamp(12px,1.35vw,17px); }
+  td { border-bottom:1px solid var(--line); padding:11px 10px; vertical-align:top; }
+  td:first-child { color:var(--amber); font:700 15px ui-monospace,Consolas,monospace; width:52px; }
+  td b { color:var(--ink); }
+  td small { color:var(--dim); }
+  .chips { display:flex; flex-wrap:wrap; gap:10px; margin-top:26px; }
+  .chip { border:1px solid var(--line); padding:9px 13px; font:600 12px/1 ui-monospace,Consolas,monospace; letter-spacing:.05em; color:var(--green); }
+  .chip.warn { color:var(--amber); }
+  .cta { margin-top:32px; font:700 clamp(20px,3vw,40px)/1.3 ui-monospace,Consolas,monospace; color:var(--cyan); }
+  .cta small { display:block; font:500 14px/1.6 ui-monospace,Consolas,monospace; color:var(--dim); margin-top:12px; letter-spacing:.04em; }
+  .foot { position:absolute; bottom:3vh; left:7vw; right:7vw; display:flex; justify-content:space-between; font:500 11px/1 ui-monospace,Consolas,monospace; letter-spacing:.18em; color:var(--dim); border-top:1px solid var(--line); padding-top:12px; }
+  .bar { position:absolute; top:0; left:0; height:3px; background:linear-gradient(90deg,var(--amber),var(--cyan)); transition:width .35s ease; }
+  .hint { position:fixed; bottom:3vh; right:7vw; font:500 11px ui-monospace,Consolas,monospace; color:var(--dim); }
+  @media (max-width:820px) { .split { grid-template-columns:1fr; } .grid3 { grid-template-columns:1fr; gap:10px; } .slide { padding:4vh 6vw; } table { font-size:12px; } }
+</style>
+</head>
+<body>
+<div class="deck" id="deck">
+  <div class="bar" id="bar"></div>
+
+  <!-- 1 · PORTADA -->
+  <section class="slide on">
+    <div class="kicker">StartRoot · Presentación 2026</div>
+    <h1>VISOR<br><em>LUNAR</em></h1>
+    <p class="lead">Un casco de EVA que no muestra datos: <b>decide por dónde pisar</b>.</p>
+    <p class="sub">Terreno real del polo sur, ruteo metabólico, efemérides en vivo y telemetría con hardware — en un único archivo que cualquiera puede abrir.</p>
+    <span class="tag">DEMO EN VIVO → gestion2026.online</span>
+  </section>
+
+  <!-- 2 · INTRODUCCIÓN / EL RETO -->
+  <section class="slide">
+    <div class="kicker">01 · El reto</div>
+    <h2>Allá arriba, el paisaje no colabora.</h2>
+    <div class="grid3">
+      <div class="card"><b>−73,7°</b><span>Elevación solar real hoy en 89,9°S. Sombras largas, casi perpetuas; el relieve se lee mal.</span></div>
+      <div class="card"><b>0</b><span>No hay GPS ni horizonte fiable. La Tierra entra y sale de la línea de visión y el enlace directo se cae.</span></div>
+      <div class="card"><b>O₂</b><span>Cada rodeo se paga en oxígeno y kcal. Un desvío innecesario no es un rodeo: es presupuesto.</span></div>
+    </div>
+    <p class="lead" style="margin-top:32px">«Un astronauta no necesita más números. Necesita <b>la decisión correcta ya proyectada sobre el suelo</b>».</p>
+  </section>
+
+  <!-- 3 · LA IDEA -->
+  <section class="slide">
+    <div class="split">
+      <div>
+        <div class="kicker">02 · La idea</div>
+        <h2>Un visor.<br><em style="font-style:normal;color:var(--cyan)">Todo dentro.</em></h2>
+        <p class="lead">Primera persona, 1/6 G, con corredor de dos flechas, retícula láser, cámara trasera, muñeca táctica y alertas C&W conviviendo en el mismo fotograma.</p>
+        <p class="sub">No es un dashboard que miras: es el campo de visión por el que caminas. Un enlace público, sin instalación, sin cuenta y sin servidor.</p>
+        <div class="chips"><span class="chip">WASD</span><span class="chip">TAB · MUÑECA</span><span class="chip">M · FAIL-SAFE</span><span class="chip">Q · WAYPOINTS</span></div>
+      </div>
+      <figure><img src="assets/hero.png" alt="Captura real del visor lunar en funcionamiento"><figcaption>Captura real del visor en ejecución — sin generación por SI.</figcaption></figure>
+    </div>
+  </section>
+
+  <!-- 4 · TERRENO REAL -->
+  <section class="slide">
+    <div class="kicker">03 · El suelo</div>
+    <h2>No es un paisaje generado. <em style="font-style:normal;color:var(--amber)">Es Shackleton.</em></h2>
+    <div class="grid3">
+      <div class="card"><b>5 m/px</b><span>LDEM LRO/LOLA Site04, 3200×3200 originales, reducidos a 512×512 alturas Int16 (524 288 bytes) servidas al navegador.</span></div>
+      <div class="card"><b>758,4 m</b><span>Altitud real mostrada en el HUD durante la verificación; la ruta C++ de 41 km se recalcula sobre el relieve real.</span></div>
+      <div class="card"><b>0,406 m</b><span>Error máximo de muestreo medido contra el GeoTIFF. Si no hay datos, el HUD lo dice: «SIMULADO».</span></div>
+    </div>
+    <p class="sub">Cualquier persona abre el enlace y camina sobre el borde del cráter real — no sobre una función seno.</p>
+  </section>
+
+  <!-- 5 · CINCO CAPAS -->
+  <section class="slide">
+    <div class="kicker">04 · Ingeniería</div>
+    <h2>Cinco decisiones, un solo bucle de render.</h2>
+    <table>
+      <tr><td>01</td><td><b>A* metabólico</b> <small>— grid 21×15, pendientes &gt;25° y rocas como coste; ahorro de O₂ y kcal/min en pantalla; chevrons que siguen el terreno.</small></td></tr>
+      <tr><td>02</td><td><b>Visión artificial</b> <small>— Canny en JS puro (Sobel, NMS, histéresis 55/150) + contornos; cajas AR con distancia estimada desde la webcam.</small></td></tr>
+      <tr><td>03</td><td><b>Efemérides en vivo</b> <small>— Sol AZ/EL y Tierra desde 89,9°S; si EL &lt; 0, conmutación real a relé GATEWAY.</small></td></tr>
+      <tr><td>04</td><td><b>C&amp;W 1/2/3 + Fail-Safe</b> <small>— monocromo, 20 fps y consumo mínimo ante batería, radiación o emergencia sostenida.</small></td></tr>
+      <tr><td>05</td><td><b>Telemetría PC ↔ ESP32</b> <small>— JSON cada 250 ms, uplink 10 Hz, demonstrable en Wokwi sin comprar una placa.</small></td></tr>
+    </table>
+  </section>
+
+  <!-- 6 · EVIDENCIA -->
+  <section class="slide">
+    <div class="kicker">05 · Evidencia</div>
+    <h2>Verificado, no prometido.</h2>
+    <div class="chips">
+      <span class="chip">0 ERRORES DE CONSOLA</span><span class="chip">DEM 524 288 B · HTTP 200</span>
+      <span class="chip">SOL AZ 264,4° / EL −73,7°</span><span class="chip">TIERRA +3,4° → DTE TIERRA</span>
+      <span class="chip">DOMINIO ACTIVO · HTTPS</span><span class="chip">WOKWI 6 PARTES / 14 CONEXIONES</span>
+      <span class="chip">FIRMWARE: 0 WARNINGS</span>
+    </div>
+    <p class="sub">Y lo que no pudimos probar, también está escrito: firmware no flasheado en placa física y cámara limitada en el navegador sin webcam. La honestidad es parte del diseño.</p>
+    <span class="tag">REPO PÚBLICO · DEMO · GUÍA WOKWI · TODO REPRODUCIBLE</span>
+  </section>
+
+  <!-- 7 · CIERRE -->
+  <section class="slide">
+    <div class="kicker">06 · Cierre</div>
+    <h2>Del casco<br><em style="font-style:normal;color:var(--cyan)">al cráter.</em></h2>
+    <p class="lead">Hoy funciona en la web. Mañana: más sitios de aterrizaje, perfil metabólico por astronauta, exportación de rutas y la misma telemetría en una placa real.</p>
+    <div class="cta">ÁBRELO Y CAMINA → https://gestion2026.online
+      <small>WASD para avanzar · TAB para la muñeca · M para el modo de emergencia<br>StartRoot · 7 diapositivas · demo pública sin registro</small>
+    </div>
+  </section>
+
+  <div class="foot"><span>STARTROOT · VISOR LUNAR</span><span id="counter">01 / 07</span></div>
+</div>
+<div class="hint">← → para navegar</div>
+<script>
+  const slides = [...document.querySelectorAll('.slide')];
+  let i = 0;
+  function show(n) {
+    i = Math.max(0, Math.min(slides.length - 1, n));
+    slides.forEach((s, k) => s.classList.toggle('on', k === i));
+    document.getElementById('counter').textContent = String(i + 1).padStart(2, '0') + ' / ' + String(slides.length).padStart(2, '0');
+    document.getElementById('bar').style.width = ((i + 1) / slides.length * 100) + '%';
+  }
+  document.addEventListener('keydown', e => {
+    if (e.key === 'ArrowRight' || e.key === 'PageDown' || e.key === ' ') { e.preventDefault(); show(i + 1); }
+    if (e.key === 'ArrowLeft' || e.key === 'PageUp') { e.preventDefault(); show(i - 1); }
+    if (e.key === 'Home') show(0);
+    if (e.key === 'End') show(slides.length - 1);
+  });
+  document.addEventListener('click', e => { show(e.clientX < window.innerWidth / 2 ? i - 1 : i + 1); });
+  show(0);
+</script>
+</body>
+</html>

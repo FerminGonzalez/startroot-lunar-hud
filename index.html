@@ -1,0 +1,3387 @@
+<!DOCTYPE html>
+<!--
+  Generación asistida por Super Inteligencia (modelos de lenguaje): programación,
+  depuración y documentación. Sin imágenes, audio ni vídeo generados por SI;
+  sin elementos de marca de ninguna agencia espacial. Declaración completa:
+  AI_USAGE.md en el repositorio. Datos: LRO/LOLA Site04 + servicio Horizons.
+-->
+<html lang="es" class="h-full w-full overflow-hidden bg-black text-slate-100">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="generator" content="Asistido por SI (LLM): código y documentación; ver AI_USAGE.md" />
+  <link rel="icon" href="data:," />
+  <title>Visor AR EVA — HUD Unificado (LRO/LOLA + A* + Fail-Safe)</title>
+
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+
+  <!-- Three.js (3D First-Person Lunar Terrain & Mini-Hologram) -->
+  <!-- Three.js LOCAL primero (funciona sin internet y con file://). Fallback CDN si falta. -->
+  <script src="three.min.js"></script>
+  <script>
+    if (typeof THREE === 'undefined') {
+      document.write('<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"><\/script>');
+    }
+  </script>
+
+  <!-- FontAwesome Icons -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
+
+  <!-- Google Fonts: Share Tech Mono & Rajdhani for Sci-Fi HUD -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@500;600;700&family=Share+Tech+Mono&display=swap" rel="stylesheet">
+
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: {
+            mono: ['"Share Tech Mono"', 'monospace'],
+            sans: ['Rajdhani', 'sans-serif'],
+          },
+          colors: {
+            hud: {
+              cyan: '#00f0ff',
+              pink: '#ff0055',
+              yellow: '#ffcc00',
+              green: '#00ff66',
+            }
+          }
+        }
+      }
+    }
+  </script>
+
+  <style>
+    body {
+      user-select: none;
+      overflow: hidden;
+      background: #000;
+    }
+
+    :root {
+      --hud-alpha: 0.85;
+    }
+
+    /* Ultra-clear Holographic Glass Projection (High Visibility & Transparency) */
+    .ar-panel {
+      background: linear-gradient(135deg, rgba(2, 14, 28, 0.14) 0%, rgba(1, 6, 15, 0.05) 100%);
+      backdrop-filter: blur(2px);
+      border: 1px solid rgba(0, 240, 255, 0.18);
+      box-shadow: inset 0 0 10px rgba(0, 240, 255, 0.03);
+      opacity: var(--hud-alpha);
+      transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+    .ar-panel:hover {
+      background: linear-gradient(135deg, rgba(3, 20, 42, 0.42) 0%, rgba(1, 10, 22, 0.28) 100%);
+      border-color: rgba(0, 240, 255, 0.55);
+      box-shadow: 0 0 18px rgba(0, 240, 255, 0.15), inset 0 0 12px rgba(0, 240, 255, 0.08);
+      opacity: 1 !important;
+    }
+
+    /* Corner Brackets for Clean Military/NASA Helmet Look */
+    .hud-bracket {
+      position: relative;
+    }
+    .hud-bracket::before,
+    .hud-bracket::after {
+      content: '';
+      position: absolute;
+      width: 6px;
+      height: 6px;
+      border-color: #00f0ff;
+      pointer-events: none;
+      opacity: 0.7;
+    }
+    .hud-bracket::before {
+      top: -1px;
+      left: -1px;
+      border-top: 1.5px solid #00f0ff;
+      border-left: 1.5px solid #00f0ff;
+    }
+    .hud-bracket::after {
+      bottom: -1px;
+      right: -1px;
+      border-bottom: 1.5px solid #00f0ff;
+      border-right: 1.5px solid #00f0ff;
+    }
+
+    /* Subtle 3D Helmet Visor Curvature for Side Wings */
+    @media (min-width: 1024px) {
+      #left-hud-wing {
+        transform: perspective(1100px) rotateY(8deg);
+        transform-origin: left center;
+      }
+      #right-hud-wing {
+        transform: perspective(1100px) rotateY(-8deg);
+        transform-origin: right center;
+      }
+    }
+
+    .ar-warning {
+      background: rgba(45, 4, 18, 0.28);
+      backdrop-filter: blur(2px);
+      border: 1px solid rgba(255, 0, 85, 0.65);
+      box-shadow: 0 0 18px rgba(255, 0, 85, 0.25);
+    }
+
+    /* Crisp Text Glow so Telemetry is Readable Without Dark Opaque Boxes */
+    .hud-text-glow {
+      text-shadow: 0 1px 4px rgba(0, 0, 0, 0.95), 0 0 8px rgba(0, 240, 255, 0.35);
+    }
+
+    /* Lighter Spacesuit Visor Glass Vignette for Maximum Central Visibility */
+    .helmet-visor-vignette {
+      pointer-events: none;
+      position: fixed;
+      inset: 0;
+      z-index: 30;
+      box-shadow:
+        inset 0 0 70px rgba(0, 240, 255, 0.08),
+        inset 0 0 25px rgba(0, 0, 0, 0.65);
+      background:
+        radial-gradient(circle at 50% 50%, transparent 76%, rgba(0, 12, 24, 0.28) 92%, rgba(0, 4, 10, 0.65) 100%);
+    }
+
+    /* Subtle Holographic Scanlines */
+    .visor-scanlines {
+      pointer-events: none;
+      position: fixed;
+      inset: 0;
+      z-index: 25;
+      background: repeating-linear-gradient(
+        to bottom,
+        transparent 0px,
+        transparent 3px,
+        rgba(0, 240, 255, 0.01) 4px
+      );
+    }
+
+    /* Electrostatic Dust & Breath Fog Overlay on Visor Glass */
+    #visor-glass-fx {
+      pointer-events: none;
+      position: fixed;
+      inset: 0;
+      z-index: 26;
+      transition: opacity 0.6s ease;
+      background:
+        radial-gradient(circle at 20% 85%, rgba(200, 235, 255, 0.09) 0%, transparent 35%),
+        radial-gradient(circle at 80% 85%, rgba(200, 235, 255, 0.09) 0%, transparent 35%),
+        radial-gradient(circle at 15% 25%, rgba(255, 255, 255, 0.04) 0%, transparent 18%);
+    }
+
+    /* Optical Filter Modes for Live Camera / Viewport */
+    .filter-normal { filter: none; }
+    .filter-thermal { filter: sepia(100%) hue-rotate(290deg) saturate(380%) contrast(155%); }
+    .filter-night { filter: sepia(100%) hue-rotate(85deg) saturate(320%) brightness(1.25) contrast(145%); }
+    .filter-highcontrast { filter: contrast(185%) saturate(120%); }
+
+    /* Custom Scrollbar */
+    ::-webkit-scrollbar { width: 3px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: rgba(0, 240, 255, 0.5); border-radius: 2px; }
+
+    /* ---- C&W (Caution & Warning) Banner Clases 1/2/3 ---- */
+    #cw-banner { pointer-events: auto; }
+    #cw-banner.c1 { color: #ff5f5f; border-color: #ff3333; background: rgba(80, 4, 8, 0.82); text-shadow: 0 0 8px #ff3333; animation: cw-blink 0.9s infinite; }
+    #cw-banner.c2 { color: #ffd166; border-color: #ffb300; background: rgba(60, 40, 4, 0.82); text-shadow: 0 0 8px #ffb300; }
+    #cw-banner.c3 { color: #5cffa0; border-color: #00ff66; background: rgba(2, 40, 16, 0.82); text-shadow: 0 0 8px #00ff66; }
+    @keyframes cw-blink { 0%, 100% { opacity: 1; } 50% { opacity: 0.45; } }
+
+    /* ---- Fail-Safe monocromático ---- */
+    #hud-root-failsafe { position: fixed; inset: 0; z-index: 60; display: none; align-items: center; justify-content: center; pointer-events: none; }
+    #hud-root-failsafe.on { display: flex; }
+    #failsafe-banner {
+      text-align: center; font-family: 'Rajdhani', sans-serif; font-weight: 700; letter-spacing: 0.22rem;
+      color: #e8e8e8; font-size: 1.15rem; padding: 16px 34px; border: 2px solid #999; border-radius: 8px;
+      background: rgba(0, 0, 0, 0.72); text-shadow: 0 0 6px #fff;
+    }
+    #failsafe-banner small { display: block; font-size: 0.78rem; letter-spacing: 0.1rem; color: #bbb; }
+    #hud-overlay-root.failsafe-active { filter: grayscale(1) contrast(1.05); }
+
+    /* ---- Chips tácticos (terreno, A*, ESP32, COM) ---- */
+    .hud-chip-inline { pointer-events: auto; font-family: 'Share Tech Mono', monospace; }
+
+    /* ---- Pantalla táctica de muñeca (TAB) ---- */
+    #wrist-dock { position: fixed; right: 12px; bottom: 12px; z-index: 24; display: flex; flex-direction: column; align-items: flex-end; gap: 6px; }
+    #wrist-dock.failsafe-hidden { display: none; }
+    #wrist-toggle {
+      pointer-events: auto; cursor: pointer;
+      background: rgba(8, 16, 28, 0.82); border: 1px solid rgba(0, 240, 255, 0.55);
+      color: #00f0ff; font-family: 'Share Tech Mono', monospace; font-size: 10px; letter-spacing: 0.08rem;
+      border-radius: 6px; padding: 7px 13px; box-shadow: 0 0 12px rgba(0, 240, 255, 0.25);
+    }
+    #wrist-toggle:hover, #wrist-toggle:focus { background: rgba(0, 240, 255, 0.16); outline: none; }
+    #wrist-panel {
+      width: 236px; max-width: 92vw; border-radius: 10px; overflow: hidden;
+      background: rgba(12, 20, 32, 0.94); border: 1px solid rgba(0, 240, 255, 0.35);
+      box-shadow: 0 0 20px rgba(0, 240, 255, 0.18); pointer-events: auto;
+      transform: translateY(112%); transition: transform 0.28s cubic-bezier(0.2, 0.8, 0.25, 1);
+    }
+    #wrist-dock.raised #wrist-panel { transform: translateY(0); }
+    #wrist-header { display: flex; justify-content: space-between; align-items: center; padding: 6px 10px; font-size: 10px;
+      border-bottom: 1px solid rgba(0, 240, 255, 0.3); background: rgba(4, 14, 24, 0.92); }
+    #wrist-header .wtitle { color: #00f0ff; font-weight: bold; letter-spacing: 0.06rem; }
+    #wrist-esp { color: #9fb3c8; }
+    #wrist-esp.on { color: #00ff66; }
+    #wrist-tabs { display: flex; border-bottom: 1px solid rgba(0, 240, 255, 0.3); }
+    #wrist-tabs button {
+      flex: 1; cursor: pointer; background: rgba(10, 22, 36, 0.9); border: none; border-right: 1px solid rgba(0, 240, 255, 0.25);
+      color: #96d7df; font-family: 'Share Tech Mono', monospace; font-size: 9px; padding: 5px 1px; letter-spacing: 0.04rem;
+    }
+    #wrist-tabs button:last-child { border-right: none; }
+    #wrist-tabs button.active { background: rgba(0, 190, 220, 0.22); color: #fff; box-shadow: inset 0 -2px 0 #00f0ff; }
+    #wrist-tabs button:hover, #wrist-tabs button:focus { background: rgba(0, 190, 220, 0.3); outline: none; }
+    #wrist-body { padding: 8px 10px; min-height: 172px; font-size: 10px; font-family: 'Share Tech Mono', monospace; }
+    .wtab { display: none; }
+    .wtab.active { display: block; }
+    .wgauge { display: flex; align-items: center; gap: 6px; margin-bottom: 5px; }
+    .wgauge .gl { width: 74px; color: #00ff66; font-size: 9px; }
+    .wgauge .gv { width: 62px; text-align: right; color: #e2f7ff; font-weight: bold; font-size: 9px; }
+    .wgauge .gbar { flex: 1; height: 5px; background: rgba(0, 240, 255, 0.12); border-radius: 3px; overflow: hidden; }
+    .wgauge .gbar i { display: block; height: 100%; width: 0%; background: #00ff66; box-shadow: 0 0 8px #00ff66; transition: width 0.2s; }
+    .wrow { margin: 5px 0; padding: 4px 6px; border: 1px dashed rgba(0, 240, 255, 0.3); border-radius: 4px; color: #bfe9ff; font-size: 9px; }
+    .wnlabel { color: #ff0055; letter-spacing: 0.08rem; margin: 6px 0 4px; font-size: 9px; }
+    #wp-list { display: flex; flex-direction: column; gap: 3px; margin-bottom: 6px; }
+    #wp-list button { cursor: pointer; text-align: left; background: rgba(10, 22, 36, 0.9); border: 1px solid #3c5a78;
+      color: #fff; font-family: inherit; font-size: 9px; padding: 4px 7px; border-radius: 4px; }
+    #wp-list button.sel { background: rgba(245, 158, 11, 0.25); border-color: #f59e0b; color: #ffd166; }
+    #wp-list button:hover, #wp-list button:focus { border-color: #00f0ff; outline: none; }
+    .winfo { margin: 4px 0; font-size: 9px; }
+    .winfo b { color: #00f0ff; }
+    .winfo .ok { color: #00ff66; }
+    .winfo .warn { color: #ffb300; }
+    .winfo .bad { color: #ff3333; }
+    #wrist-log { font-size: 8.5px; color: #8ce8b4; line-height: 1.4; white-space: pre-wrap; }
+    #btn-storm { margin-top: 6px; width: 100%; cursor: pointer; background: rgba(255, 0, 85, 0.15); border: 1px solid #ff0055;
+      color: #ff8fb0; font-family: inherit; font-size: 9px; letter-spacing: 0.06rem; border-radius: 4px; padding: 5px 8px; }
+    #btn-storm:hover, #btn-storm:focus { background: rgba(255, 0, 85, 0.32); outline: none; }
+    .wbtn { width: 100%; margin: 6px 0; cursor: pointer; background: rgba(0, 240, 255, 0.14); border: 1px solid rgba(0, 240, 255, 0.5);
+      color: #9ff4ff; font-family: inherit; font-size: 9px; letter-spacing: 0.06rem; border-radius: 4px; padding: 5px 8px; }
+    .wbtn:hover, .wbtn:focus { background: rgba(0, 240, 255, 0.3); outline: none; }
+  </style>
+</head>
+<body class="font-sans antialiased text-hud-cyan h-screen w-screen relative select-none">
+
+  <!-- 1. LAYER 0: FULLSCREEN FIRST-PERSON VIEWPORT (WEBCAM + 3D LUNAR SIMULATION) -->
+  <div id="fpv-viewport" class="fixed inset-0 z-0 overflow-hidden bg-black filter-normal transition-all duration-500">
+    <!-- Live Physical Camera Feed (WebRTC) -->
+    <video id="webcam-video" autoplay playsinline muted class="hidden w-full h-full object-cover"></video>
+    
+    <!-- 3D Synthetic First-Person Lunar Surface -->
+    <div id="fpv-three-container" class="w-full h-full absolute inset-0"></div>
+  </div>
+
+  <!-- 2. LAYER 1: AUGMENTED REALITY NAVIGATION CANVAS (AR Waypoints, Rock Detection, LIDAR Pulse, Artificial Horizon) -->
+  <canvas id="ar-nav-canvas" class="fixed inset-0 pointer-events-none z-10"></canvas>
+
+  <!-- 3. LAYER 2: HELMET CURVED VISOR GLASS VIGNETTE & SCANLINES -->
+  <div class="visor-scanlines"></div>
+  <div id="visor-glass-fx" class="opacity-40"></div>
+  <div class="helmet-visor-vignette"></div>
+
+  <!-- 4. LAYER 3: PERIPHERAL HOLOGRAPHIC HUD OVERLAY (Over 85% Open Field of View) -->
+  <div id="hud-overlay-root" class="fixed inset-0 z-20 pointer-events-none flex flex-col justify-between p-2 md:p-3.5 hud-text-glow">
+
+    <!-- ================= TOP BAR: UNIFIED ULTRA-SLIM TELEMETRY RIBBON ================= -->
+    <header class="flex flex-col items-center w-full gap-1">
+      
+      <div class="w-full flex flex-wrap justify-between items-center gap-2">
+        
+        <!-- Top-Left: MET Clock, Suit Life Support & Camera Controls -->
+        <div class="ar-panel hud-bracket rounded-md px-2.5 py-1 pointer-events-auto flex items-center gap-2.5">
+          <div>
+            <span class="text-[8px] font-mono text-slate-300/80 block uppercase tracking-wider">MET MISIÓN</span>
+            <span id="met-clock" class="text-sm md:text-base font-mono font-bold text-hud-cyan tracking-wider">00:45:08</span>
+          </div>
+          <div class="h-5 w-px bg-hud-cyan/20"></div>
+          <!-- Suit Biometrics -->
+          <div class="hidden sm:flex items-center gap-2.5 font-mono text-[10px]">
+            <div>
+              <span class="text-slate-300/80 block text-[8px]">O₂ TRAJE</span>
+              <span id="suit-o2" class="text-hud-green font-bold">98% · 4.3 PSI</span>
+            </div>
+            <div>
+              <span class="text-slate-300/80 block text-[8px]">BIOMETRÍA</span>
+              <span class="text-hud-pink font-bold"><i class="fa-solid fa-heart-pulse animate-pulse mr-0.5"></i><span id="suit-bpm">76</span> BPM</span>
+            </div>
+          </div>
+          <div class="h-5 w-px bg-hud-cyan/20"></div>
+          <div class="flex items-center gap-1 font-mono text-[11px]">
+            <button id="btn-cam-toggle" onclick="toggleRealCamera()" class="px-2 py-1 rounded bg-hud-cyan/15 hover:bg-hud-cyan text-hud-cyan hover:text-slate-950 font-bold border border-hud-cyan/40 transition-all flex items-center gap-1">
+              <i class="fa-solid fa-camera"></i> <span id="cam-btn-text">CÁMARA AR</span>
+            </button>
+            <select id="optic-filter-select" onchange="setOpticalFilter(this.value)" class="bg-slate-950/35 text-hud-cyan border border-hud-cyan/30 rounded px-1.5 py-1 text-[11px] outline-none cursor-pointer">
+              <option value="normal" class="bg-slate-950">Visor: Óptico Real</option>
+              <option value="thermal" class="bg-slate-950">Visor: Térmico FLIR</option>
+              <option value="night" class="bg-slate-950">Visor: Visión Nocturna</option>
+              <option value="lidar" class="bg-slate-950">Visor: Malla LIDAR 3D</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- Top-Center: HOLOGRAPHIC NAVIGATION COMPASS TAPE + INTEGRATED ALERT PILL -->
+        <div class="ar-panel hud-bracket rounded-md px-3 py-1 pointer-events-auto flex flex-col items-center w-64 md:w-80">
+          <div class="w-full flex justify-between text-[9px] font-mono text-slate-200 mb-0.5">
+            <span>RUMBO <strong id="compass-deg" class="text-hud-cyan">180° S</strong></span>
+            <span>DESTINO <strong id="nav-wp-name" class="text-hud-green">LANDER BASE (145m)</strong></span>
+          </div>
+          <div class="relative w-full h-4 overflow-hidden border-t border-b border-hud-cyan/20 flex items-center justify-center">
+            <div id="compass-strip" class="whitespace-nowrap font-mono text-[11px] tracking-[0.55em] text-hud-cyan/90 transition-transform duration-75">
+              N · · NE · · E · · SE · · S · · SW · · W · · NW · · N · · NE · · E · · SE · · S
+            </div>
+            <div class="absolute inset-y-0 left-1/2 w-0.5 bg-hud-pink"></div>
+          </div>
+        </div>
+
+        <!-- Top-Right: HUD Transparency Slider & Action Controls -->
+        <div class="ar-panel hud-bracket rounded-md px-2.5 py-1 pointer-events-auto flex items-center gap-1.5 font-mono text-xs">
+          <!-- Transparency Control -->
+          <div class="hidden lg:flex flex-col items-end mr-1">
+            <span class="text-[8px] text-slate-300 uppercase">OPACIDAD HUD</span>
+            <input type="range" min="0.2" max="1.0" step="0.05" value="0.85" oninput="setHudOpacity(this.value)" class="w-16 h-1 accent-cyan-400 cursor-pointer" title="Ajustar transparencia de los paneles del casco">
+          </div>
+          <button onclick="triggerLidarScanWave()" class="px-2 py-1 rounded bg-hud-green/15 hover:bg-hud-green/35 border border-hud-green/40 text-hud-green font-bold transition-all flex items-center gap-1" title="Emitir pulso topográfico LIDAR (Tecla E)">
+            <i class="fa-solid fa-wave-square"></i> <span class="hidden sm:inline text-[11px]">LIDAR</span>
+          </button>
+          <button onclick="cargarRutaGlobal()" id="btn-ruta-global" class="px-2 py-1 rounded bg-hud-yellow/15 hover:bg-hud-yellow/35 border border-hud-yellow/40 text-hud-yellow font-bold transition-all flex items-center gap-1" title="Cargar la travesía global de 41 km generada por el simulador C++">
+            <i class="fa-solid fa-route"></i> <span class="hidden sm:inline text-[11px]">RUTA C++</span>
+          </button>
+          <button onclick="triggerSpectrometerScan()" class="px-2 py-1 rounded bg-hud-yellow/15 hover:bg-hud-yellow/35 border border-hud-yellow/40 text-hud-yellow font-bold transition-all flex items-center gap-1" title="Analizador Espectral Geológico y Marcar Muestra (Tecla ESPACIO)">
+            <i class="fa-solid fa-wand-magic-sparkles"></i> <span class="hidden md:inline text-[11px]">ESPECTRO</span>
+          </button>
+          <button onclick="toggleVoiceControl()" id="btn-voice-cmd" class="px-2 py-1 rounded bg-slate-950/30 hover:bg-hud-cyan/20 border border-hud-cyan/30 text-slate-200 transition-all flex items-center gap-1" title="Comandos por Voz Manos Libres">
+            <i class="fa-solid fa-microphone-slash" id="voice-icon"></i> <span class="hidden xl:inline text-[10px]" id="voice-label">VOZ</span>
+          </button>
+          <button onclick="togglePiPCamera()" id="btn-pip-toggle" class="px-2 py-1 rounded bg-hud-cyan/15 hover:bg-hud-cyan/30 border border-hud-cyan/40 text-hud-cyan transition-all" title="Alternar Monitor Picture-in-Picture (Cámara Trasera / Rover)">
+            <i class="fa-solid fa-clone"></i>
+          </button>
+          <button onclick="purgeVisorDust()" class="px-2 py-1 rounded bg-slate-950/30 hover:bg-hud-cyan/20 border border-hud-cyan/30 text-hud-cyan transition-all" title="Purga Electrostática de Polvo y Empañamiento del Visor">
+            <i class="fa-solid fa-sparkles"></i>
+          </button>
+          <button onclick="toggleGyroscope()" id="btn-gyro" class="px-2 py-1 rounded bg-slate-950/30 hover:bg-hud-cyan/20 border border-hud-cyan/30 text-slate-300 transition-all sm:hidden" title="Activar Giroscopio Móvil">
+            <i class="fa-solid fa-compass"></i>
+          </button>
+          <button onclick="toggleAudioSuit()" id="btn-suit-audio" class="px-2 py-1 rounded bg-slate-950/30 hover:bg-hud-cyan/20 border border-hud-cyan/30 text-slate-200 transition-all" title="Activar sonido de casco">
+            <i class="fa-solid fa-volume-xmark" id="audio-icon"></i>
+          </button>
+          <button onclick="toggleSensorModal()" class="px-2 py-1 rounded bg-hud-cyan/10 hover:bg-hud-cyan/30 border border-hud-cyan/30 text-hud-cyan transition-all flex items-center gap-1" title="Instalar o configurar sensores">
+            <i class="fa-solid fa-microchip"></i>
+          </button>
+          <button onclick="toggleDeclutter()" id="btn-declutter" class="px-2 py-1 rounded bg-slate-950/30 hover:bg-hud-cyan/20 border border-hud-cyan/30 text-hud-cyan transition-all" title="Modo Visor Ultra Despejado">
+            <i class="fa-solid fa-eye"></i>
+          </button>
+          <button onclick="openReportModal()" class="px-2 py-1 rounded bg-hud-pink/15 hover:bg-hud-pink/40 border border-hud-pink/40 text-hud-pink font-bold transition-all" title="Generar Reporte">
+            <i class="fa-solid fa-file-contract"></i>
+          </button>
+        </div>
+
+      </div>
+
+      <!-- Ultra-slim Translucent Alert Strip -->
+      <div id="alert-banner" class="ar-warning rounded-full px-4 py-0.5 pointer-events-auto flex items-center gap-2.5 transition-all duration-300">
+        <i class="fa-solid fa-triangle-exclamation text-hud-pink animate-pulse text-[11px]"></i>
+        <span id="alert-title" class="text-[11px] font-mono font-bold tracking-wider text-hud-pink uppercase">
+          ENERGÍA CRÍTICA: SOL A <span id="alert-solar-deg">0.1</span>°
+        </span>
+        <span class="hidden sm:inline text-[10px] font-mono text-slate-200 border-l border-hud-pink/40 pl-2.5" id="alert-subtitle">
+          Poca generación solar
+        </span>
+      </div>
+
+      <!-- C&W (Caution & Warning) — Clases 1/2/3 + Fail-Safe -->
+      <div id="cw-banner" class="c3 rounded-full px-4 py-0.5 flex items-center gap-2.5 transition-all duration-300 border font-mono">
+        <i class="fa-solid fa-shield-halved text-[11px]"></i>
+        <span id="cw-title" class="text-[11px] font-bold tracking-wider uppercase">CLASE 3 NOMINAL</span>
+      </div>
+
+    </header>
+
+    <!-- ================= MIDDLE AREA: WIDE OPEN CENTRAL VIEWPORT & SLIM EDGE DOCKS ================= -->
+    <div class="flex-1 flex justify-between items-center my-1 relative">
+
+      <!-- LEFT PERIPHERAL DOCK: ULTRA-COMPACT COLLAPSIBLE TELEMETRY & SENSORS -->
+      <aside id="left-hud-wing" class="w-48 md:w-52 flex flex-col gap-1.5 pointer-events-auto transition-all duration-300">
+        
+        <!-- Telemetría Ambiental (Collapsible) -->
+        <div class="ar-panel hud-bracket rounded-md p-2">
+          <button onclick="toggleSection('env-panel-body')" class="w-full text-[9px] font-mono font-bold uppercase tracking-widest text-hud-pink border-b border-hud-pink/25 pb-1 mb-1.5 flex justify-between items-center">
+            <span><i class="fa-solid fa-temperature-low mr-1"></i> AMBIENTE · <span class="text-hud-cyan" id="site-short-tag">SHACKLETON</span></span>
+            <i class="fa-solid fa-chevron-down text-[8px] text-slate-400"></i>
+          </button>
+          <div id="env-panel-body" class="grid grid-cols-3 gap-1 text-center font-mono">
+            <div class="bg-slate-950/20 p-1 rounded border border-hud-cyan/15">
+              <span class="text-[8px] text-slate-300 block">TEMP</span>
+              <span id="env-temp" class="text-[11px] font-bold text-hud-cyan">-170°C</span>
+            </div>
+            <div class="bg-slate-950/20 p-1 rounded border border-hud-cyan/15">
+              <span class="text-[8px] text-slate-300 block">RAD UV</span>
+              <span id="env-uv" class="text-[11px] font-bold text-hud-cyan">3 IDX</span>
+            </div>
+            <div class="bg-slate-950/20 p-1 rounded border border-hud-cyan/15">
+              <span class="text-[8px] text-slate-300 block">POLVO</span>
+              <span id="env-dust" class="text-[11px] font-bold text-hud-cyan">10%</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Sensores del Casco (Collapsible & Compact) -->
+        <div class="ar-panel hud-bracket rounded-md p-2 flex flex-col max-h-[42vh]">
+          <button onclick="toggleSection('sensors-container')" class="w-full flex justify-between items-center border-b border-hud-pink/25 pb-1 mb-1.5">
+            <span class="text-[9px] font-mono font-bold uppercase tracking-widest text-hud-pink">
+              <i class="fa-solid fa-satellite-dish mr-1"></i> SENSORES
+            </span>
+            <span class="flex items-center gap-1.5">
+              <span id="active-sensor-count" class="text-[8px] font-mono text-hud-green">6 ACT.</span>
+              <i class="fa-solid fa-chevron-down text-[8px] text-slate-400"></i>
+            </span>
+          </button>
+
+          <div id="sensors-container" class="space-y-1 overflow-y-auto pr-0.5 flex-1">
+            <!-- Populated via JS -->
+          </div>
+        </div>
+
+        <!-- Analizador Espectral Geológico & Walk-Back Limit (Nuevo Módulo Compacto) -->
+        <div class="ar-panel hud-bracket rounded-md p-2 font-mono text-[10px]">
+          <div class="flex justify-between items-center border-b border-hud-yellow/25 pb-1 mb-1">
+            <span class="text-[9px] font-bold uppercase tracking-widest text-hud-yellow">
+              <i class="fa-solid fa-atom mr-1"></i> ESPECTRÓMETRO & RETORNO
+            </span>
+            <span id="sample-count-badge" class="text-[8px] text-hud-green">0 MUESTRAS</span>
+          </div>
+          <div id="spectro-readout" class="text-[9px] text-slate-200 truncate mb-1">
+            Apunta y pulsa [ESPACIO] o ESPECTRO
+          </div>
+          <div class="flex justify-between items-center text-[9px] border-t border-hud-cyan/15 pt-1">
+            <span class="text-slate-300">Límite Retorno O₂:</span>
+            <span id="walkback-status" class="text-hud-green font-bold">SEGURO (14% O₂)</span>
+          </div>
+        </div>
+
+      </aside>
+
+      <!-- CENTER FPV RETICLE (Featherweight Optical Crosshair for Unobstructed Vision) -->
+      <div class="pointer-events-none flex flex-col items-center justify-center">
+        <div id="center-reticle-box" class="relative w-16 h-16 flex items-center justify-center opacity-60 transition-transform duration-150">
+          <div class="absolute top-0 left-0 w-2.5 h-2.5 border-t border-l border-hud-cyan/80"></div>
+          <div class="absolute top-0 right-0 w-2.5 h-2.5 border-t border-r border-hud-cyan/80"></div>
+          <div class="absolute bottom-0 left-0 w-2.5 h-2.5 border-b border-l border-hud-cyan/80"></div>
+          <div class="absolute bottom-0 right-0 w-2.5 h-2.5 border-b border-r border-hud-cyan/80"></div>
+          <!-- Center Laser Pip -->
+          <div id="reticle-pip" class="w-1 h-1 bg-hud-green rounded-full shadow-[0_0_8px_#00ff66]"></div>
+          <!-- Floating Laser Readout without heavy background box -->
+          <div class="absolute -bottom-5 font-mono text-[9px] text-hud-green tracking-wider bg-slate-950/25 px-1.5 py-0.2 rounded whitespace-nowrap">
+            <span id="reticle-range">12.0</span>m · <span id="reticle-target-type" class="text-hud-cyan">REGOLITO</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- RIGHT PERIPHERAL DOCK: SLIM NAVIGATION, COMMS & SOLAR -->
+      <aside id="right-hud-wing" class="w-48 md:w-52 flex flex-col gap-1.5 pointer-events-auto transition-all duration-300">
+        
+        <!-- Selección de Sitio y Waypoint de Navegación -->
+        <div class="ar-panel hud-bracket rounded-md p-2 font-mono text-xs">
+          <button onclick="toggleSection('nav-panel-body')" class="w-full text-[9px] font-bold uppercase tracking-widest text-hud-pink border-b border-hud-pink/25 pb-1 mb-1.5 flex justify-between items-center">
+            <span><i class="fa-solid fa-location-crosshairs mr-1"></i> NAVEGACIÓN</span>
+            <span class="text-hud-yellow text-[8px] cursor-pointer hover:text-hud-green" id="site-data-source" onclick="fetchJPLSolar()" title="Clic: descargar efemérides solares reales de NASA JPL Horizons">JPL HORIZONS <i class="fa-solid fa-chevron-down ml-0.5 text-slate-400"></i></span>
+          </button>
+
+          <div id="nav-panel-body" class="space-y-1.5">
+            <div>
+              <label class="block text-[8px] text-slate-300 uppercase mb-0.5">SITIO LUNAR</label>
+              <select id="landing-site-select" onchange="onSiteChange(this.value)" class="w-full bg-slate-950/35 text-hud-cyan border border-hud-cyan/25 rounded p-1 text-[10px] outline-none">
+                <option value="shackleton" class="bg-slate-950">Cráter Shackleton - Sur</option>
+                <option value="malapert" class="bg-slate-950">Mons Malapert - Cresta</option>
+                <option value="cabeus" class="bg-slate-950">Cráter Cabeus - Hielo</option>
+                <option value="tranquillity" class="bg-slate-950">Base Tranquilidad</option>
+              </select>
+            </div>
+
+            <div>
+              <label class="block text-[8px] text-slate-300 uppercase mb-0.5">WAYPOINT AR</label>
+              <select id="waypoint-select" onchange="changeActiveWaypoint(this.value)" class="w-full bg-slate-950/35 text-hud-green border border-hud-green/35 rounded p-1 text-[10px] outline-none">
+                <option value="0" class="bg-slate-950">Lander Base (145m)</option>
+                <option value="1" class="bg-slate-950">Depósito Hielo (82m)</option>
+                <option value="2" class="bg-slate-950">Torre Solar (210m)</option>
+                <option value="3" class="bg-slate-950">Rover VIPER (64m)</option>
+              </select>
+            </div>
+          </div>
+        </div>
+
+        <!-- Comunicación Tierra + Energía Solar Compactos -->
+        <div class="ar-panel hud-bracket rounded-md p-2 font-mono text-xs">
+          <button onclick="toggleSection('solar-panel-body')" class="w-full text-[9px] font-bold uppercase tracking-widest text-hud-pink border-b border-hud-pink/25 pb-1 mb-1.5 flex justify-between items-center">
+            <span><i class="fa-solid fa-tower-broadcast mr-1"></i> DTE & ENERGÍA</span>
+            <span id="comms-vis" class="text-hud-pink font-bold text-[9px]">OCULTA</span>
+          </button>
+
+          <div id="solar-panel-body" class="space-y-1 text-[10px]">
+            <div class="flex justify-between">
+              <span class="text-slate-300">Señal Tierra:</span>
+              <span id="comms-signal" class="text-hud-pink font-bold">0% int.</span>
+            </div>
+
+            <div class="flex justify-between">
+              <span class="text-slate-300">Elevación Sol:</span>
+              <span class="text-hud-cyan font-bold"><span id="solar-elev-val">0.1</span>° (180°)</span>
+            </div>
+
+            <div>
+              <div class="flex justify-between text-[8px] text-slate-300">
+                <span>ÁNGULO SOLAR</span>
+                <span id="slider-deg-label">0.1°</span>
+              </div>
+              <input type="range" id="solar-slider" min="0.0" max="45.0" step="0.1" value="0.1" oninput="updateSolarElevation(this.value)" class="w-full h-1 cursor-pointer accent-cyan-400">
+            </div>
+
+            <div class="flex justify-between pt-0.5 border-t border-hud-cyan/15">
+              <span class="text-slate-300">Paneles:</span>
+              <span id="solar-power" class="text-hud-pink font-bold">0% rend.</span>
+            </div>
+
+            <div class="flex justify-between pt-0.5">
+              <span class="text-slate-300">COM:</span>
+              <span id="comm-mode-label" class="text-hud-green font-bold">DTE TIERRA</span>
+            </div>
+
+            <div class="flex justify-between">
+              <span class="text-slate-300">TERRENO:</span>
+              <span id="terrain-badge" class="text-hud-yellow font-bold text-[8px] leading-tight">SIMULADO</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- MONITOR PICTURE-IN-PICTURE (PiP): CÁMARA TRASERA / ROVER / DRON -->
+        <div id="pip-panel" class="ar-panel hud-bracket rounded-md p-1.5 font-mono text-[10px]">
+          <div class="flex justify-between items-center mb-1">
+            <span class="text-[8px] font-bold text-hud-cyan uppercase flex items-center gap-1">
+              <span class="w-1.5 h-1.5 rounded-full bg-hud-green animate-ping"></span>
+              <span id="pip-mode-title">CAM TRASERA 180°</span>
+            </span>
+            <button onclick="cyclePiPFeed()" class="px-1.5 py-0.2 bg-hud-cyan/15 hover:bg-hud-cyan/35 border border-hud-cyan/30 rounded text-[8px] text-hud-cyan" title="Cambiar cámara auxiliar">
+              CAMBIAR <i class="fa-solid fa-repeat ml-0.5"></i>
+            </button>
+          </div>
+          <div class="relative w-full h-20 rounded overflow-hidden border border-hud-cyan/25 bg-black">
+            <canvas id="pip-canvas" class="w-full h-full block"></canvas>
+            <div class="absolute bottom-0.5 left-1 text-[8px] text-hud-green bg-slate-950/60 px-1 rounded" id="pip-telemetry-tag">
+              FOV 110° · SIN AMENAZAS
+            </div>
+          </div>
+        </div>
+
+      </aside>
+
+    </div>
+
+    <!-- ================= BOTTOM BAR: MINIMALIST LOG, CONTROLS & COMPACT 3D HOLO-RADAR ================= -->
+    <footer class="w-full flex flex-col sm:flex-row justify-between items-end gap-2">
+      
+      <!-- Bottom-Left: Slim 2-Line Telemetry Stream -->
+      <div class="ar-panel hud-bracket rounded-md p-1.5 pointer-events-auto w-full sm:w-64 font-mono text-[10px]">
+        <div class="flex justify-between items-center text-[9px] text-hud-cyan border-b border-hud-cyan/15 pb-0.5 mb-0.5">
+          <span><i class="fa-solid fa-person-walking mr-1"></i> EVA (WASD/RATÓN)</span>
+          <span id="nav-speed-badge" class="text-hud-green font-bold">0.0 m/s</span>
+        </div>
+        <div id="sys-log" class="h-8 overflow-y-auto space-y-0.5 text-[9px] text-slate-200/90">
+          <!-- Logs -->
+        </div>
+        <div class="flex justify-between items-center text-[8px] border-t border-hud-cyan/15 pt-0.5 mt-0.5 gap-1">
+          <span id="astar-chip" class="text-hud-green font-bold truncate">A*: ahorro O2 0.0% | 0.0 kcal/min | 0.0 kcal</span>
+          <span id="esp32-chip" class="text-slate-300 whitespace-nowrap">ESP32: SIN PLACA</span>
+        </div>
+      </div>
+
+      <!-- Bottom-Center: Sleek Translucent Pill Controls -->
+      <div class="ar-panel rounded-full px-3 py-1 pointer-events-auto flex items-center gap-2 font-mono text-[11px]">
+        <button onmousedown="startMove('forward')" onmouseup="stopMove()" ontouchstart="startMove('forward')" ontouchend="stopMove()" class="px-2.5 py-0.5 hover:bg-hud-cyan/25 rounded-full text-hud-cyan border border-hud-cyan/30 active:bg-hud-cyan active:text-slate-950 font-bold" title="Avanzar (W)">
+          <i class="fa-solid fa-arrow-up mr-0.5"></i> AVANZAR
+        </button>
+        <button onmousedown="startMove('left')" onmouseup="stopMove()" ontouchstart="startMove('left')" ontouchend="stopMove()" class="px-2 py-0.5 hover:bg-hud-cyan/25 rounded-full text-hud-cyan border border-hud-cyan/30" title="Girar Izquierda (A)">
+          <i class="fa-solid fa-rotate-left"></i>
+        </button>
+        <button onclick="recenterLook()" class="px-2 py-0.5 hover:bg-hud-cyan/25 rounded-full text-slate-200 border border-hud-cyan/20 text-[9px]" title="Centrar Vista">
+          NIVELAR
+        </button>
+        <button onmousedown="startMove('right')" onmouseup="stopMove()" ontouchstart="startMove('right')" ontouchend="stopMove()" class="px-2 py-0.5 hover:bg-hud-cyan/25 rounded-full text-hud-cyan border border-hud-cyan/30" title="Girar Derecha (D)">
+          <i class="fa-solid fa-rotate-right"></i>
+        </button>
+      </div>
+
+      <!-- Bottom-Right: 3D HOLOGRAPHIC CRATER RADAR GLOBE (Compact & Translucent) -->
+      <div class="ar-panel hud-bracket rounded-lg p-1.5 pointer-events-auto flex items-center gap-2 relative">
+        <div class="w-20 h-20 md:w-24 md:h-24 relative flex items-center justify-center">
+          <div id="holo-globe-container" class="w-full h-full"></div>
+          <span class="absolute bottom-0 text-[8px] font-mono text-hud-cyan uppercase tracking-widest bg-slate-950/45 px-1 rounded border border-hud-cyan/25">
+            RADAR 3D
+          </span>
+        </div>
+        <div class="font-mono text-[9px] space-y-0.5 pr-1.5 hidden sm:block">
+          <div class="text-hud-cyan font-bold uppercase">TOPOGRAFÍA</div>
+          <div class="text-slate-300">POS: <span id="astronaut-coords" class="text-slate-100">89.900°S 0.000°E</span></div>
+          <div class="text-slate-300">ALT: <span id="astronaut-alt" class="text-hud-cyan">0.0 m</span></div>
+          <div class="text-slate-300">PENDIENTE: <span id="terrain-slope" class="text-hud-green">2.4°</span></div>
+          <div class="text-slate-300">ROCAS: <span id="obstacle-status" class="text-hud-green">DESPEJADO</span></div>
+          <div class="flex gap-1 mt-0.5">
+            <button onclick="togglePathGuide()" id="btn-path-guide" class="flex-1 py-0.5 px-1 bg-hud-green/15 border border-hud-green/40 text-hud-green rounded text-[8px] font-bold">
+              GUÍA AR
+            </button>
+            <button onclick="toggleBreadcrumbs()" id="btn-breadcrumbs" class="flex-1 py-0.5 px-1 bg-hud-cyan/15 border border-hud-cyan/40 text-hud-cyan rounded text-[8px] font-bold" title="Mostrar rastro de migas de pan de retorno">
+              RASTRO ON
+            </button>
+          </div>
+        </div>
+      </div>
+
+    </footer>
+
+  </div>
+
+  <!-- ================= MODAL: SCALABLE SENSOR & CAMERA MANAGER ================= -->
+  <div id="sensor-modal" class="fixed inset-0 bg-slate-950/80 backdrop-blur-md z-50 flex items-center justify-center p-4 hidden">
+    <div class="ar-panel bg-slate-900/95 w-full max-w-xl rounded-xl p-5 border-hud-cyan">
+      <div class="flex justify-between items-center border-b border-hud-cyan/30 pb-3 mb-4">
+        <h3 class="text-sm md:text-base font-mono font-bold text-hud-cyan uppercase flex items-center gap-2">
+          <i class="fa-solid fa-microchip text-hud-green"></i> EXPANSIÓN DE SENSORES Y CÁMARAS DEL VISOR
+        </h3>
+        <button onclick="toggleSensorModal()" class="text-slate-400 hover:text-hud-pink text-xl font-bold">&times;</button>
+      </div>
+
+      <div class="space-y-4 font-mono text-xs">
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+          <div>
+            <label class="block text-slate-400 mb-1 text-[10px]">NOMBRE DEL MÓDULO</label>
+            <input type="text" id="new-sensor-name" placeholder="ej. LIDAR Frontal 2" class="w-full bg-slate-950 border border-hud-cyan/40 p-2 rounded text-hud-cyan outline-none">
+          </div>
+          <div>
+            <label class="block text-slate-400 mb-1 text-[10px]">TIPO DE SENSOR</label>
+            <select id="new-sensor-type" class="w-full bg-slate-950 border border-hud-cyan/40 p-2 rounded text-hud-cyan outline-none">
+              <option value="lidar">LIDAR 3D (Mapeo)</option>
+              <option value="proximity">Ultrasónico / Proximidad</option>
+              <option value="thermal">Cámara Térmica IR (°C)</option>
+              <option value="rangefinder">Telémetro Láser</option>
+              <option value="camera">Cámara Óptica Auxiliar</option>
+            </select>
+          </div>
+          <div>
+            <label class="block text-slate-400 mb-1 text-[10px]">INTERFAZ / PUERTO</label>
+            <select id="new-sensor-source" class="w-full bg-slate-950 border border-hud-cyan/40 p-2 rounded text-hud-cyan outline-none">
+              <option value="Simulado">Simulación AR</option>
+              <option value="WebCam">WebRTC (Cámara Dispositivo)</option>
+              <option value="WebSerial">USB / WebSerial (ESP32/Arduino)</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="flex justify-end gap-2 pt-2">
+          <button onclick="connectWebSerial()" class="px-3 py-2 bg-hud-cyan/15 border border-hud-cyan/40 text-hud-cyan rounded hover:bg-hud-cyan/30">
+            <i class="fa-brands fa-usb mr-1"></i> VINCULAR PUERTO USB
+          </button>
+          <button onclick="addNewSensorFromModal()" class="px-4 py-2 bg-hud-cyan text-slate-950 font-bold rounded hover:bg-cyan-300">
+            <i class="fa-solid fa-plus mr-1"></i> INSTALAR EN VISOR
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ================= MODAL: MISSION TELEMETRY REPORT ================= -->
+  <div id="report-modal" class="fixed inset-0 bg-slate-950/85 backdrop-blur-md z-50 flex items-center justify-center p-4 hidden">
+    <div class="ar-panel bg-slate-900/95 w-full max-w-lg rounded-xl p-5 border-hud-cyan">
+      <div class="flex justify-between items-center border-b border-hud-cyan/30 pb-2 mb-3">
+        <h3 class="text-sm font-mono font-bold text-hud-cyan uppercase">
+          <i class="fa-solid fa-file-contract text-hud-yellow mr-1"></i> REPORTE DE NAVEGACIÓN EVA
+        </h3>
+        <button onclick="closeReportModal()" class="text-slate-400 hover:text-hud-pink text-xl font-bold">&times;</button>
+      </div>
+      <pre id="report-content" class="bg-slate-950 p-3 rounded border border-slate-800 font-mono text-[11px] text-slate-300 max-h-72 overflow-y-auto"></pre>
+      <div class="mt-4 flex justify-end gap-2 font-mono text-xs">
+        <button onclick="downloadReportJSON()" class="px-3 py-1.5 bg-hud-cyan text-slate-950 font-bold rounded">DESCARGAR JSON</button>
+        <button onclick="closeReportModal()" class="px-3 py-1.5 bg-slate-800 text-slate-300 rounded">CERRAR</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ================= OVERLAY: MODO FAIL-SAFE (M) ================= -->
+  <div id="hud-root-failsafe">
+    <div id="failsafe-banner">MODO FAIL-SAFE<small>CONSUMO MÍNIMO — M PARA RESTAURAR</small></div>
+  </div>
+
+  <!-- ================= PANTALLA TÁCTICA DE MUÑECA (TAB) ================= -->
+  <div id="wrist-dock">
+    <button id="wrist-toggle" type="button">▲ PANTALLA DE MUÑECA (TAB)</button>
+    <div id="wrist-panel">
+      <div id="wrist-header">
+        <span class="wtitle">xEMU WRIST TERMINAL v4.2</span>
+        <span id="wrist-esp">ESP32: SIN PLACA</span>
+      </div>
+      <div id="wrist-tabs" role="tablist">
+        <button type="button" data-tab="0" role="tab">SENSORES</button>
+        <button type="button" data-tab="1" role="tab">NAVEGACIÓN</button>
+        <button type="button" data-tab="2" role="tab">AMBIENTE</button>
+        <button type="button" data-tab="3" role="tab">ESP32 / AR</button>
+      </div>
+      <div id="wrist-body">
+        <div class="wtab active" data-panel="0">
+          <div class="wgauge"><span class="gl">LIDAR FRONTAL</span><span class="gv" id="wv-lidar">12.0 m</span><div class="gbar"><i id="wb-lidar"></i></div></div>
+          <div class="wgauge"><span class="gl">PROXIMIDAD</span><span class="gv" id="wv-prox">4.1 m</span><div class="gbar"><i id="wb-prox"></i></div></div>
+          <div class="wgauge"><span class="gl">ULTRASÓNICO</span><span class="gv" id="wv-ultra">1.8 m</span><div class="gbar"><i id="wb-ultra"></i></div></div>
+          <div class="wgauge"><span class="gl">TÉRMICA</span><span class="gv" id="wv-temp">-50.3°C</span><div class="gbar"><i id="wb-temp"></i></div></div>
+          <div class="wgauge"><span class="gl">IR SUELO</span><span class="gv" id="wv-ir">-46.6°C</span><div class="gbar"><i id="wb-ir"></i></div></div>
+          <div class="wrow" id="w-esp32-row">ESP32: —</div>
+        </div>
+        <div class="wtab" data-panel="1">
+          <div class="wnlabel">SELECCIONAR DESTINO:</div>
+          <div id="wp-list">
+            <button type="button" data-wp="0">WP-01: LANDER BASE</button>
+            <button type="button" data-wp="1">WP-02: DEPOSITO HIELO SUR</button>
+            <button type="button" data-wp="2">WP-03: TORRE SOLAR</button>
+            <button type="button" data-wp="3">WP-04: ROVER VIPER</button>
+          </div>
+          <div class="winfo" id="w-astar-nav">A*: <b>—</b></div>
+          <div class="winfo" id="w-kcal-nav">KCAL: <b>—</b></div>
+          <div class="winfo" id="w-walkback-nav">O2 RETORNO: <b>—</b></div>
+        </div>
+        <div class="wtab" data-panel="2">
+          <div class="winfo" id="w-amb-temp">TEMP: <b>—</b></div>
+          <div class="winfo" id="w-amb-slope">PENDIENTE: <b>—</b></div>
+          <div class="winfo" id="w-amb-dust">POLVO: <b>—</b></div>
+          <div class="winfo" id="w-amb-solar">ELEV. SOLAR: <b>—</b></div>
+          <div class="winfo" id="w-amb-rad">RADIACIÓN: <b>—</b></div>
+          <div class="winfo" id="w-amb-batt">BATERÍA: <b>—</b></div>
+          <button class="wbtn" id="btn-storm" type="button">TORMENTA SOLAR</button>
+        </div>
+        <div class="wtab" data-panel="3">
+          <div class="winfo" id="w-esp-status">PUENTE: <b>—</b></div>
+          <button class="wbtn" id="btn-camara-wrist" type="button">ACTIVAR CÁMARA AR</button>
+          <div class="wnlabel">LOG DEL SISTEMA:</div>
+          <div id="wrist-log"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ================= APPLICATION JAVASCRIPT ================= -->
+  <script>
+    // --- GLOBAL STATE ---
+    const state = {
+      cameraActive: false,
+      opticalFilter: 'normal',
+      declutter: false,
+      showArPath: true,
+      showBreadcrumbs: true,
+      suitAudioEnabled: false,
+      voiceActive: false,
+      gyroActive: false,
+      serverApi: false,
+      pipVisible: true,
+      pipModeIdx: 0, // 0: Rear 180°, 1: Rover VIPER Cam, 2: Orbital Drone Top-Down
+      visorDustLevel: 10,
+      suitO2Pct: 98.0,
+      suitBpm: 76,
+      solarElevation: 0.1,
+      metSeconds: 45 * 60 + 8,
+      heading: 180, // Degrees (180 = South)
+      pitch: 0,
+      roll: 0,
+      posX: 0,
+      posZ: 0,
+      velForward: 0,
+      velTurn: 0,
+      walkCycle: 0,
+      moveDir: null,
+      lidarPulseRadius: 0,
+      lidarPulseActive: false,
+      breadcrumbs: [{ x: 0, z: 0 }],
+      userTrail: [],
+      geologySamples: [],
+      psrZones: [
+        { name: 'POZO SOMBRA PSR-1 (-215°C)', x: 28, z: -38, radius: 14, type: 'psr' },
+        { name: 'CRESTA SOLAR PICO ETERNO', x: -34, z: -28, radius: 12, type: 'solar' }
+      ],
+      activeWaypointIdx: 0,
+      waypoints: [
+        { name: 'LANDER BASE', x: 0, z: -145, color: '#00ff66' },
+        { name: 'DEPÓSITO HIELO SUR', x: 65, z: -50, color: '#00f0ff' },
+        { name: 'TORRE SOLAR REPETIDORA', x: -120, z: -170, color: '#ffcc00' },
+        { name: 'ROVER VIPER', x: -45, z: 40, color: '#ff0055' }
+      ],
+      sensors: [
+        { name: 'LIDAR Frontal', val: 12.0, unit: 'm', max: 50, type: 'distance' },
+        { name: 'Proximidad Casco', val: 4.1, unit: 'm', max: 15, type: 'distance' },
+        { name: 'Ultrasónico Suelo', val: 1.9, unit: 'm', max: 10, type: 'distance' },
+        { name: 'Cámara Térmica', val: -50.3, unit: '°C', min: -200, max: 100, type: 'temp' },
+        { name: 'Sensor Infrarrojo', val: -46.6, unit: '°C', min: -200, max: 100, type: 'temp' },
+        { name: 'Telémetro Láser', val: 28.4, unit: 'm', max: 100, type: 'distance' },
+        { name: 'Visión IA (Cámara)', val: 0, unit: '%', max: 100, type: 'cv' }
+      ],
+      // --- NUEVAS CAPACIDADES (DEM LRO/LOLA, A*, C&W, Earth, ESP32, muñeca) ---
+      demLoaded: false,
+      demMeta: null,
+      battery_pct: 100,
+      radiation_uSv: 0,
+      stormActive: false,
+      failsafe: false,
+      failsafeAuto: false,
+      failSafeSince: 0,
+      cwClass: 3,
+      cwMessage: 'CLASE 3 NOMINAL',
+      rockInPathDist: 99,
+      lastCorridorAbsErrDeg: 0,
+      lastHeadingErr: 0,
+      o2SavedPct: 0,
+      o2SavedTarget: 0,
+      kcalPerMin: 0,
+      kcalBurned: 0,
+      walkbackO2: 0,
+      earthAz: 180,
+      earthEl: null,
+      earthSource: 'SIM',
+      earthOccluded: true,
+      commMode: 'DTE TIERRA',
+      solarSourceReal: false,
+      espConnected: false,
+      espPort: null,
+      espLidar: null,
+      espUltra: null,
+      espTemp: null,
+      espLastUplink: 0,
+      lastEspRx: 0,
+      lastRepathTs: 0,
+      lastEarthFetch: 0,
+      wristRaised: false,
+      wristTab: 0,
+      sysLogHistory: []
+    };
+
+    // --- 1. MAIN FIRST-PERSON 3D LUNAR SIMULATION + PiP AUXILIARY CAMERA (THREE.JS) ---
+    let fpvScene, fpvCamera, fpvRenderer, fpvTerrain, sunLight, sunSphere, earthGroup, waypointBeacon, lidarRingMesh;
+    let pipCamera, pipRenderer;
+    let lunarRocks = [];
+    let sampleBeacons3D = [];
+    let raycaster = new THREE.Raycaster();
+    const fpvContainer = document.getElementById('fpv-three-container');
+
+    // --- Nuevas variables de módulo (DEM, corredor, Tierra, muñeca) ---
+    let terrenoGlobal = null, terrenoSkirt = null, psrZoneMeshes = [];
+    let corridorGroup = null, corridorBezier = null, corridorChevrons = [];
+    let earthMeshRef = null;
+
+    // --- 2. MINI HOLOGRAPHIC 3D CRATER RADAR (BOTTOM-RIGHT) ---
+    let holoScene, holoCamera, holoRenderer, holoGlobe, holoCraterMesh, holoUserDot, holoOuterRing;
+    const holoContainer = document.getElementById('holo-globe-container');
+
+    // --- TERRAIN: DEM LRO/LOLA (fuente primaria real) + fallback procedural ---
+    // Malla 512x512 Int16 little-endian, valores 0..(z_max-z_min);
+    // altura real = muestra + z_min. Ventana 20x20 km centrada en el origen.
+    const DEM_WINDOW_M = 20000;
+    const DEM_GRID = 512;
+    let demData = null;   // Int16Array(DEM_GRID*DEM_GRID)
+    let demMeta = null;   // {width,height,pixel_scale_m,z_min,z_max,site,source_url,citation,...}
+
+    function getProceduralHeight(x, z) {
+      const dist = Math.sqrt(x * x + z * z);
+      let y = Math.sin(x * 0.05) * Math.cos(z * 0.05) * 2.0 + Math.sin(x * 0.15 + z * 0.1) * 0.4;
+      if (dist > 42 && dist < 62) {
+        y += Math.sin(((dist - 42) / 20) * Math.PI) * 4.2; // Crater rim ridge
+      }
+      return y;
+    }
+
+    function heightReal(x, z) {
+      // Bilineal sobre la malla; coords fuera de ventana se recortan al borde (clamp)
+      if (!demData || !demMeta) return getProceduralHeight(x, z);
+      const gx = ((x + DEM_WINDOW_M / 2) / DEM_WINDOW_M) * DEM_GRID;
+      const gz = ((z + DEM_WINDOW_M / 2) / DEM_WINDOW_M) * DEM_GRID;
+      const cx = Math.max(0, Math.min(DEM_GRID - 1.0001, gx));
+      const cz = Math.max(0, Math.min(DEM_GRID - 1.0001, gz));
+      const x0 = Math.floor(cx), z0 = Math.floor(cz);
+      const x1 = Math.min(DEM_GRID - 1, x0 + 1), z1 = Math.min(DEM_GRID - 1, z0 + 1);
+      const fx = cx - x0, fz = cz - z0;
+      const i00 = z0 * DEM_GRID + x0, i10 = z0 * DEM_GRID + x1;
+      const i01 = z1 * DEM_GRID + x0, i11 = z1 * DEM_GRID + x1;
+      const v = demData[i00] * (1 - fx) * (1 - fz) + demData[i10] * fx * (1 - fz) +
+                demData[i01] * (1 - fx) * fz + demData[i11] * fx * fz;
+      return v + demMeta.z_min;
+    }
+
+    // Dispatcher central: DEM real si está cargado; si no, procedural (file://)
+    function getLunarTerrainHeight(x, z) {
+      if (demData && demMeta) return heightReal(x, z);
+      return getProceduralHeight(x, z);
+    }
+
+    function terrainSlopeDeg(x, z) {
+      const e = 0.5;
+      const hx = (getLunarTerrainHeight(x + e, z) - getLunarTerrainHeight(x - e, z)) / (2 * e);
+      const hz = (getLunarTerrainHeight(x, z + e) - getLunarTerrainHeight(x, z - e)) / (2 * e);
+      return Math.atan(Math.sqrt(hx * hx + hz * hz)) * 180 / Math.PI;
+    }
+
+    function initFirstPersonWorld() {
+      const w = window.innerWidth;
+      const h = window.innerHeight;
+
+      fpvScene = new THREE.Scene();
+      fpvScene.fog = new THREE.FogExp2(0x010408, 0.0028);
+
+      fpvCamera = new THREE.PerspectiveCamera(65, w / h, 0.1, 30000);
+      fpvCamera.position.set(0, 1.8, 0);
+
+      fpvRenderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+      fpvRenderer.setSize(w, h);
+      fpvRenderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+      fpvContainer.appendChild(fpvRenderer.domElement);
+
+      // High-density Starfield Skybox
+      const starGeo = new THREE.BufferGeometry();
+      const starVerts = [];
+      for (let i = 0; i < 2200; i++) {
+        starVerts.push((Math.random() - 0.5) * 800, Math.random() * 350 + 2, (Math.random() - 0.5) * 800);
+      }
+      starGeo.setAttribute('position', new THREE.Float32BufferAttribute(starVerts, 3));
+      const starMat = new THREE.PointsMaterial({ color: 0xffffff, size: 0.85, transparent: true, opacity: 0.9 });
+      fpvScene.add(new THREE.Points(starGeo, starMat));
+
+      // Terreno (procedural o DEM real según disponibilidad). Definido en rebuildTerrainMeshes().
+      rebuildTerrainMeshes();
+
+      // Scatter 3D Lunar Boulders / Rocks for AR Obstacle Detection & Rangefinding
+      const rockGeo = new THREE.DodecahedronGeometry(1, 1);
+      for (let i = 0; i < 45; i++) {
+        const rx = (Math.random() - 0.5) * 220;
+        const rz = (Math.random() - 0.5) * 220;
+        if (Math.abs(rx) < 6 && Math.abs(rz) < 6) continue; // Keep spawn clear
+        const scale = 0.5 + Math.random() * 2.2;
+        const ry = getLunarTerrainHeight(rx, rz) + scale * 0.4;
+
+        const rockMat = new THREE.MeshStandardMaterial({
+          color: 0x6a727d,
+          roughness: 0.95,
+          metalness: 0.15
+        });
+        const rock = new THREE.Mesh(rockGeo, rockMat);
+        rock.position.set(rx, ry, rz);
+        rock.scale.set(scale * (0.8 + Math.random() * 0.5), scale * 0.75, scale);
+        rock.rotation.set(Math.random() * 3, Math.random() * 3, 0);
+        rock.name = `ROCA BASÁLTICA #${i + 1}`;
+        rock.userData = { isObstacle: true, radius: scale, id: i + 1 };
+        fpvScene.add(rock);
+        lunarRocks.push(rock);
+      }
+
+      // Low-angle Lunar Sun + Visible Solar Corona Sphere on the Horizon
+      sunLight = new THREE.DirectionalLight(0xfff4e0, 1.8);
+      sunLight.position.set(0, 1.5, -350);
+      fpvScene.add(sunLight);
+      fpvScene.add(new THREE.AmbientLight(0x0d1b2a, 0.45));
+
+      const sunGeo = new THREE.SphereGeometry(9, 24, 24);
+      const sunMat = new THREE.MeshBasicMaterial({ color: 0xfffae0 });
+      sunSphere = new THREE.Mesh(sunGeo, sunMat);
+      sunSphere.position.copy(sunLight.position);
+      fpvScene.add(sunSphere);
+
+      // Tierra real en el cielo lunar (posicionada por AZ/EL reales de JPL)
+      earthGroup = new THREE.Group();
+      const earthGeo = new THREE.SphereGeometry(14, 32, 32);
+      const earthMat = new THREE.MeshStandardMaterial({
+        color: 0xffffff,
+        roughness: 0.7,
+        metalness: 0.05,
+        emissive: 0x072247,
+        map: makeEarthTexture()
+      });
+      const earthMesh = new THREE.Mesh(earthGeo, earthMat);
+      earthMesh.name = "PLANETA TIERRA (ENLACE DTE)";
+      earthMeshRef = earthMesh;
+      earthGroup.add(earthMesh);
+
+      const atmoGeo = new THREE.SphereGeometry(15.2, 24, 24);
+      const atmoMat = new THREE.MeshBasicMaterial({
+        color: 0x00f0ff,
+        transparent: true,
+        opacity: 0.2,
+        wireframe: true
+      });
+      earthGroup.add(new THREE.Mesh(atmoGeo, atmoMat));
+      earthGroup.position.set(140, 48, -280);
+      earthGroup.visible = false; // se muestra cuando EL real > 0
+      fpvScene.add(earthGroup);
+
+      // 3D Expanding LIDAR Topological Scan Wave Ring on Ground
+      const ringGeo = new THREE.RingGeometry(0.5, 1.8, 64);
+      ringGeo.rotateX(-Math.PI / 2);
+      const ringMat = new THREE.MeshBasicMaterial({
+        color: 0x00ff66,
+        side: THREE.DoubleSide,
+        transparent: true,
+        opacity: 0.0
+      });
+      lidarRingMesh = new THREE.Mesh(ringGeo, ringMat);
+      fpvScene.add(lidarRingMesh);
+
+      // 3D Holographic Waypoint Beacon in the World
+      const beaconGeo = new THREE.CylinderGeometry(0.35, 0.35, 45, 12);
+      const beaconMat = new THREE.MeshBasicMaterial({
+        color: 0x00ff66,
+        transparent: true,
+        opacity: 0.35,
+        wireframe: true
+      });
+      waypointBeacon = new THREE.Mesh(beaconGeo, beaconMat);
+      waypointBeacon.position.set(state.waypoints[0].x, getLunarTerrainHeight(state.waypoints[0].x, state.waypoints[0].z) + 22, state.waypoints[0].z);
+      fpvScene.add(waypointBeacon);
+
+      // 3D PSR Shadow Zone & Solar Peak Rings on Terrain
+      state.psrZones.forEach(zone => {
+        const zGeo = new THREE.RingGeometry(zone.radius - 0.5, zone.radius, 48);
+        zGeo.rotateX(-Math.PI / 2);
+        const zMat = new THREE.MeshBasicMaterial({
+          color: zone.type === 'psr' ? 0xff0055 : 0x00ff66,
+          side: THREE.DoubleSide,
+          transparent: true,
+          opacity: 0.45
+        });
+        const zMesh = new THREE.Mesh(zGeo, zMat);
+        zMesh.position.set(zone.x, getLunarTerrainHeight(zone.x, zone.z) + 0.25, zone.z);
+        zMesh.userData.isPsrZone = true;
+        psrZoneMeshes.push(zMesh);
+        fpvScene.add(zMesh);
+      });
+
+      // Initialize Picture-in-Picture (PiP) Multi-Camera Renderer
+      const pipCanvas = document.getElementById('pip-canvas');
+      if (pipCanvas) {
+        pipCamera = new THREE.PerspectiveCamera(85, 2.2, 0.1, 600);
+        pipRenderer = new THREE.WebGLRenderer({ canvas: pipCanvas, antialias: false });
+        pipRenderer.setSize(pipCanvas.clientWidth || 180, pipCanvas.clientHeight || 80);
+      }
+
+      // Mouse look drag on viewport
+      let dragging = false;
+      let prevX = 0, prevY = 0;
+      window.addEventListener('mousedown', (e) => {
+        if (e.target.closest('.pointer-events-auto')) return;
+        dragging = true;
+        prevX = e.clientX;
+        prevY = e.clientY;
+      });
+      window.addEventListener('mousemove', (e) => {
+        if (!dragging) return;
+        const dx = e.clientX - prevX;
+        const dy = e.clientY - prevY;
+        state.heading = (state.heading + dx * 0.22 + 360) % 360;
+        state.pitch = Math.max(-40, Math.min(40, state.pitch - dy * 0.18));
+        state.roll = Math.max(-8, Math.min(8, -dx * 0.12));
+        prevX = e.clientX;
+        prevY = e.clientY;
+      });
+      // Keyboard WASD + E (LIDAR Scan) + SPACE (Spectrometer)
+      window.addEventListener('keydown', (e) => {
+        if (e.target.tagName === 'INPUT') return;
+        const k = e.key.toLowerCase();
+        if (k === 'w' || k === 'arrowup') state.moveDir = 'forward';
+        if (k === 's' || k === 'arrowdown') state.moveDir = 'backward';
+        if (k === 'a' || k === 'arrowleft') state.moveDir = 'left';
+        if (k === 'd' || k === 'arrowright') state.moveDir = 'right';
+        if (k === 'e') triggerLidarScanWave();
+        if (e.code === 'Space') {
+          e.preventDefault();
+          triggerSpectrometerScan();
+        }
+      });
+      window.addEventListener('keyup', () => state.moveDir = null);
+    }
+
+    function initMiniHoloGlobe() {
+      const w = holoContainer.clientWidth || 120;
+      const h = holoContainer.clientHeight || 120;
+
+      holoScene = new THREE.Scene();
+      holoCamera = new THREE.PerspectiveCamera(42, w / h, 0.1, 100);
+      holoCamera.position.set(0, 9.5, 17.5);
+      holoCamera.lookAt(0, 0, 0);
+
+      holoRenderer = new THREE.WebGLRenderer({ alpha: true, antialias: true });
+      holoRenderer.setSize(w, h);
+      holoContainer.appendChild(holoRenderer.domElement);
+
+      // Outer Holographic Sphere (Matches reference image!)
+      const sphereGeo = new THREE.SphereGeometry(6.4, 22, 16);
+      const sphereMat = new THREE.MeshBasicMaterial({
+        color: 0x00f0ff,
+        wireframe: true,
+        transparent: true,
+        opacity: 0.22
+      });
+      holoGlobe = new THREE.Mesh(sphereGeo, sphereMat);
+      holoScene.add(holoGlobe);
+
+      // Equatorial Orbital Ring around the Hologram (Exact detail from your image)
+      const orbitGeo = new THREE.RingGeometry(7.2, 7.45, 48);
+      orbitGeo.rotateX(Math.PI / 2.2);
+      const orbitMat = new THREE.MeshBasicMaterial({
+        color: 0x00f0ff,
+        side: THREE.DoubleSide,
+        transparent: true,
+        opacity: 0.65
+      });
+      holoOuterRing = new THREE.Mesh(orbitGeo, orbitMat);
+      holoScene.add(holoOuterRing);
+
+      // Inner Crater Topographic Mesh
+      const craterGeo = new THREE.PlaneGeometry(9, 9, 24, 24);
+      const pos = craterGeo.attributes.position;
+      for (let i = 0; i < pos.count; i++) {
+        const x = pos.getX(i);
+        const y = pos.getY(i);
+        const r = Math.sqrt(x * x + y * y);
+        const z = r < 3.2 ? -Math.cos((r / 3.2) * Math.PI) * 1.5 - 0.5 : Math.sin(x) * 0.25;
+        pos.setZ(i, z);
+      }
+      const craterMat = new THREE.MeshBasicMaterial({
+        color: 0x00f0ff,
+        wireframe: true,
+        transparent: true,
+        opacity: 0.78
+      });
+      holoCraterMesh = new THREE.Mesh(craterGeo, craterMat);
+      holoCraterMesh.rotation.x = -Math.PI / 2.3;
+      holoScene.add(holoCraterMesh);
+
+      // Astronaut Position Ping inside Mini Hologram
+      const dotGeo = new THREE.SphereGeometry(0.35, 10, 10);
+      const dotMat = new THREE.MeshBasicMaterial({ color: 0x00ff66 });
+      holoUserDot = new THREE.Mesh(dotGeo, dotMat);
+      holoScene.add(holoUserDot);
+    }
+
+    // --- 3. AUGMENTED REALITY OVERLAY CANVAS (2D AR NAVIGATION, OBSTACLE BOXES & HORIZON) ---
+    const arCanvas = document.getElementById('ar-nav-canvas');
+    const arCtx = arCanvas.getContext('2d');
+
+    function renderARNavigationOverlay() {
+      arCanvas.width = window.innerWidth;
+      arCanvas.height = window.innerHeight;
+      const w = arCanvas.width;
+      const h = arCanvas.height;
+      arCtx.clearRect(0, 0, w, h);
+
+      const wp = state.waypoints[state.activeWaypointIdx];
+      const dx = wp.x - state.posX;
+      const dz = wp.z - state.posZ;
+      const dist = Math.sqrt(dx * dx + dz * dz);
+
+      // Compute relative bearing to waypoint
+      let targetAngle = Math.atan2(dx, -dz) * (180 / Math.PI);
+      targetAngle = (targetAngle + 360) % 360;
+      let relAngle = targetAngle - state.heading;
+      if (relAngle > 180) relAngle -= 360;
+      if (relAngle < -180) relAngle += 360;
+
+      // Update Top Compass Bar UI
+      const dirs = ['N', 'NE', 'E', 'SE', 'S', 'SW', 'W', 'NW'];
+      const dirStr = dirs[Math.round(state.heading / 45) % 8];
+      document.getElementById('compass-deg').innerText = `${Math.round(state.heading)}° ${dirStr}`;
+      document.getElementById('nav-wp-name').innerText = `${wp.name} (${dist.toFixed(0)}m)`;
+      const stripOffset = ((state.heading - 180) / 360) * 260;
+      document.getElementById('compass-strip').style.transform = `translateX(${-stripOffset}px)`;
+
+      // 1. Draw AR Ground Path Chevrons (Perspective holographic carpet)
+      if (state.showArPath) {
+        const bottomY = h * 0.86;
+        const centerX = w * 0.5;
+        const turnShift = (relAngle / 90) * (w * 0.25);
+
+        for (let i = 1; i <= 5; i++) {
+          const t = i / 6;
+          const yPos = bottomY - t * (h * 0.26);
+          const xPos = centerX + turnShift * t;
+          const span = (1 - t * 0.55) * 68;
+
+          arCtx.strokeStyle = `rgba(0, 255, 102, ${0.75 - t * 0.45})`;
+          arCtx.lineWidth = 2.2;
+          arCtx.beginPath();
+          arCtx.moveTo(xPos - span, yPos + 14);
+          arCtx.lineTo(xPos, yPos);
+          arCtx.lineTo(xPos + span, yPos + 14);
+          arCtx.stroke();
+        }
+      }
+
+      // 1B. Draw 3D Breadcrumb Return Trail ("Migas de Pan" hacia el punto de partida)
+      if (state.showBreadcrumbs && fpvCamera && state.breadcrumbs.length > 1) {
+        arCtx.strokeStyle = 'rgba(0, 240, 255, 0.65)';
+        arCtx.lineWidth = 2;
+        arCtx.setLineDash([5, 5]);
+        arCtx.beginPath();
+        let started = false;
+        state.breadcrumbs.forEach((pt) => {
+          const worldVec = new THREE.Vector3(pt.x, getLunarTerrainHeight(pt.x, pt.z) + 0.15, pt.z);
+          const proj = worldVec.project(fpvCamera);
+          if (proj.z > 0 && proj.z < 1) {
+            const sx = (proj.x * 0.5 + 0.5) * w;
+            const sy = (-proj.y * 0.5 + 0.5) * h;
+            if (!started) {
+              arCtx.moveTo(sx, sy);
+              started = true;
+            } else {
+              arCtx.lineTo(sx, sy);
+            }
+            arCtx.fillStyle = '#00f0ff';
+            arCtx.fillRect(sx - 2, sy - 2, 4, 4);
+          }
+        });
+        arCtx.stroke();
+        arCtx.setLineDash([]);
+      }
+
+      // 1C. Project PSR Permanent Shadow Zones & Geological Sample Beacons
+      if (fpvCamera) {
+        state.psrZones.forEach(zone => {
+          const zVec = new THREE.Vector3(zone.x, getLunarTerrainHeight(zone.x, zone.z) + 1.2, zone.z);
+          const proj = zVec.project(fpvCamera);
+          if (proj.z > 0 && proj.z < 1) {
+            const sx = (proj.x * 0.5 + 0.5) * w;
+            const sy = (-proj.y * 0.5 + 0.5) * h;
+            const zDist = Math.hypot(zone.x - state.posX, zone.z - state.posZ);
+            if (zDist < 95) {
+              arCtx.fillStyle = zone.type === 'psr' ? '#ff0055' : '#00ff66';
+              arCtx.font = 'bold 10px "Share Tech Mono"';
+              arCtx.fillText(`▼ ${zone.name} (${zDist.toFixed(0)}m)`, sx - 55, sy);
+            }
+          }
+        });
+
+        state.geologySamples.forEach(smp => {
+          const sVec = new THREE.Vector3(smp.x, smp.y + 0.8, smp.z);
+          const proj = sVec.project(fpvCamera);
+          if (proj.z > 0 && proj.z < 1) {
+            const sx = (proj.x * 0.5 + 0.5) * w;
+            const sy = (-proj.y * 0.5 + 0.5) * h;
+            arCtx.strokeStyle = '#ffcc00';
+            arCtx.strokeRect(sx - 6, sy - 6, 12, 12);
+            arCtx.fillStyle = '#ffcc00';
+            arCtx.font = '9px "Share Tech Mono"';
+            arCtx.fillText(`#${smp.id} ${smp.mineral}`, sx + 9, sy + 3);
+          }
+        });
+      }
+
+      // 2. Project 3D Lunar Rocks as Real-Time AR Obstacle Bounding Boxes
+      let closestRockDist = 999;
+      if (fpvCamera) {
+        lunarRocks.forEach(rock => {
+          const rdx = rock.position.x - state.posX;
+          const rdz = rock.position.z - state.posZ;
+          const rDist = Math.sqrt(rdx * rdx + rdz * rdz);
+          if (rDist < closestRockDist) closestRockDist = rDist;
+
+          // Highlight rocks within 28m or touched by LIDAR scan wave
+          const inLidarWave = state.lidarPulseActive && Math.abs(rDist - state.lidarPulseRadius) < 6;
+          if (rDist < 26 || inLidarWave) {
+            const proj = rock.position.clone().project(fpvCamera);
+            if (proj.z > 0 && proj.z < 1) {
+              const sx = (proj.x * 0.5 + 0.5) * w;
+              const sy = (-proj.y * 0.5 + 0.5) * h;
+
+              if (sx > 60 && sx < w - 60 && sy > 60 && sy < h - 60) {
+                const boxSize = Math.max(18, Math.min(70, (rock.userData.radius * 420) / rDist));
+                const isHazard = rDist < 9.5;
+                const col = isHazard ? '#ff0055' : (inLidarWave ? '#00ff66' : 'rgba(0, 240, 255, 0.55)');
+
+                arCtx.strokeStyle = col;
+                arCtx.lineWidth = isHazard ? 1.8 : 1;
+                arCtx.strokeRect(sx - boxSize / 2, sy - boxSize / 2, boxSize, boxSize);
+
+                arCtx.fillStyle = col;
+                arCtx.font = '10px "Share Tech Mono"';
+                arCtx.fillText(`${ isHazard ? '⚠ OBSTÁCULO ' : 'ROCA ' }${rDist.toFixed(1)}m`, sx - boxSize / 2, sy - boxSize / 2 - 4);
+              }
+            }
+          }
+        });
+      }
+
+      // Update Obstacle Status Badge & Proximity Sensor with real rock distance
+      const obsEl = document.getElementById('obstacle-status');
+      if (closestRockDist < 8.5) {
+        obsEl.innerText = `ALERTA A ${closestRockDist.toFixed(1)}m`;
+        obsEl.className = 'text-hud-pink font-bold animate-pulse';
+      } else {
+        obsEl.innerText = 'DESPEJADO';
+        obsEl.className = 'text-hud-green';
+      }
+      state.sensors[1].val = Math.min(15, closestRockDist); // Sync proximity sensor with real 3D world
+
+      // 3. Draw Floating 3D Waypoint Diamond Marker in First-Person View
+      if (Math.abs(relAngle) < 55) {
+        const markerX = w / 2 + (relAngle / 55) * (w * 0.42);
+        const markerY = h / 2 - (state.pitch / 45) * (h * 0.3) - 32;
+
+        arCtx.strokeStyle = wp.color;
+        arCtx.lineWidth = 2;
+        arCtx.beginPath();
+        arCtx.moveTo(markerX, markerY - 14);
+        arCtx.lineTo(markerX + 14, markerY);
+        arCtx.lineTo(markerX, markerY + 14);
+        arCtx.lineTo(markerX - 14, markerY);
+        arCtx.closePath();
+        arCtx.stroke();
+
+        // Waypoint AR Tag
+        arCtx.fillStyle = wp.color;
+        arCtx.font = 'bold 12px "Share Tech Mono"';
+        arCtx.fillText(`◈ ${wp.name}`, markerX + 20, markerY - 2);
+        arCtx.fillStyle = '#00f0ff';
+        arCtx.font = '11px "Share Tech Mono"';
+        arCtx.fillText(`DIST: ${dist.toFixed(1)}m | ETA: ${Math.round(dist / 1.4)}s`, markerX + 20, markerY + 12);
+      } else {
+        // Edge Direction Indicator Arrow when Waypoint is off-screen
+        const isRight = relAngle > 0;
+        const edgeX = isRight ? w - 45 : 45;
+        const edgeY = h / 2;
+        arCtx.fillStyle = wp.color;
+        arCtx.font = 'bold 14px "Share Tech Mono"';
+        arCtx.fillText(isRight ? `OBJETIVO ▶` : `◀ OBJETIVO`, isRight ? edgeX - 75 : edgeX - 10, edgeY);
+      }
+
+      // 4. Draw Pitch & Roll Artificial Horizon Ladder (Spacesuit Inertial Unit)
+      const horizonY = h / 2 + (state.pitch / 45) * (h * 0.35);
+      arCtx.save();
+      arCtx.translate(w / 2, horizonY);
+      arCtx.rotate((state.roll * Math.PI) / 180);
+      arCtx.strokeStyle = 'rgba(0, 240, 255, 0.25)';
+      arCtx.lineWidth = 1.2;
+      arCtx.beginPath();
+      arCtx.moveTo(-150, 0);
+      arCtx.lineTo(-65, 0);
+      arCtx.lineTo(-65, 8);
+      arCtx.moveTo(65, 8);
+      arCtx.lineTo(65, 0);
+      arCtx.lineTo(150, 0);
+      arCtx.stroke();
+      arCtx.restore();
+    }
+
+    // --- 4. REAL-TIME LASER RAYCASTER & INERTIAL LUNAR WALK LOOP ---
+    function updateCenterLaserRangefinder() {
+      if (!fpvCamera || !fpvTerrain) return;
+      raycaster.setFromCamera(new THREE.Vector2(0, 0), fpvCamera);
+      const targets = [fpvTerrain, ...lunarRocks];
+      const intersects = raycaster.intersectObjects(targets, false);
+
+      const retRangeEl = document.getElementById('reticle-range');
+      const retTypeEl = document.getElementById('reticle-target-type');
+      const retPipEl = document.getElementById('reticle-pip');
+
+      if (intersects.length > 0) {
+        const hit = intersects[0];
+        const d = Math.min(99.9, hit.distance);
+        retRangeEl.innerText = d.toFixed(1);
+        state.sensors[0].val = d; // Sync primary LIDAR sensor with real raycast
+        state.sensors[5].val = d; // Sync Laser Rangefinder
+
+        if (hit.object.userData && hit.object.userData.isObstacle) {
+          retTypeEl.innerText = hit.object.name;
+          retTypeEl.className = 'text-hud-yellow font-bold';
+          retPipEl.className = 'w-1.5 h-1.5 bg-hud-yellow rounded-full shadow-[0_0_10px_#ffcc00]';
+        } else {
+          retTypeEl.innerText = 'REGOLITO';
+          retTypeEl.className = 'text-hud-cyan';
+          retPipEl.className = 'w-1 h-1 bg-hud-green rounded-full shadow-[0_0_8px_#00ff66]';
+        }
+      } else {
+        retRangeEl.innerText = '∞';
+        retTypeEl.innerText = 'ESPACIO PROFUNDO';
+        retTypeEl.className = 'text-slate-400';
+      }
+    }
+
+    function triggerLidarScanWave() {
+      state.lidarPulseActive = true;
+      state.lidarPulseRadius = 1.0;
+      if (lidarRingMesh) {
+        lidarRingMesh.position.set(state.posX, getLunarTerrainHeight(state.posX, state.posZ) + 0.15, state.posZ);
+        lidarRingMesh.material.opacity = 0.85;
+      }
+      playSuitBeep(880, 0.12);
+      addSysLog("Pulso LIDAR 360° emitido: Escaneando rocas y topografía.");
+    }
+
+    function animateLoop() {
+      requestAnimationFrame(animateLoop);
+
+      // ===== FAIL-SAFE: limitar el bucle a ~20 fps (consumo mínimo) =====
+      if (state.failsafe) {
+        const fsNow = performance.now();
+        const fsLast = animateLoop._fsLast || 0;
+        animateLoop._fsLast = fsNow;
+        if (fsNow - fsLast < 50) return;
+      }
+
+      // Delta-time normalization: el movimiento funciona igual a 5, 30 o 60 FPS
+      const nowMs = performance.now();
+      const lastMs = animateLoop.lastMs || nowMs;
+      animateLoop.lastMs = nowMs;
+      const dt = Math.min(0.1, (nowMs - lastMs) / 1000);
+      const f = dt * 60; // factor de normalización a 60 FPS
+
+      // Smooth 1/6G Lunar Walking Inertia & Head-Bobbing
+      const targetVel = state.moveDir === 'forward' ? 0.24 : (state.moveDir === 'backward' ? -0.16 : 0);
+      const targetTurn = state.moveDir === 'left' ? -1.4 : (state.moveDir === 'right' ? 1.4 : 0);
+
+      state.velForward += (targetVel - state.velForward) * Math.min(1, 0.08 * f);
+      state.velTurn += (targetTurn - state.velTurn) * Math.min(1, 0.12 * f);
+
+      if (Math.abs(state.velForward) > 0.005 || Math.abs(state.velTurn) > 0.01) {
+        state.heading = (state.heading + state.velTurn * f + 360) % 360;
+        const rad = state.heading * (Math.PI / 180);
+        state.posX += Math.sin(rad) * state.velForward * f;
+        state.posZ -= Math.cos(rad) * state.velForward * f;
+        state.walkCycle += Math.abs(state.velForward) * 0.85 * f;
+
+        const realSpeed = (Math.abs(state.velForward) * 6.0).toFixed(1);
+        document.getElementById('nav-speed-badge').innerText = `${realSpeed} m/s`;
+        document.getElementById('astronaut-coords').innerText = `${(89.9 + state.posZ * 0.0001).toFixed(3)}°S ${(state.posX * 0.0001).toFixed(3)}°E`;
+
+        // Record Breadcrumb Trail every 6 meters walked
+        const lastCrumb = state.breadcrumbs[state.breadcrumbs.length - 1];
+        if (Math.hypot(state.posX - lastCrumb.x, state.posZ - lastCrumb.z) > 6.0) {
+          state.breadcrumbs.push({ x: state.posX, z: state.posZ });
+          if (state.breadcrumbs.length > 60) state.breadcrumbs.shift();
+          // Integra con el backend Python: traza completa persistente del usuario
+          state.userTrail.push({ x: state.posX, z: state.posZ, y: getLunarTerrainHeight(state.posX, state.posZ), t: Math.round(state.metSeconds) });
+          programarGuardadoCaminata();
+        }
+
+        // Dynamic Walk-Back O2 Autonomy Calculation
+        const distFromLander = Math.hypot(state.posX - state.waypoints[0].x, state.posZ - state.waypoints[0].z);
+        const returnO2Needed = Math.min(85, Math.round((distFromLander / 12) + 4));
+        const wbEl = document.getElementById('walkback-status');
+        if (wbEl) {
+          wbEl.innerText = returnO2Needed > 45 ? `ALERTA (${returnO2Needed}% O₂)` : `SEGURO (${returnO2Needed}% O₂)`;
+          wbEl.className = returnO2Needed > 45 ? 'text-hud-pink font-bold animate-pulse' : 'text-hud-green font-bold';
+        }
+      } else {
+        document.getElementById('nav-speed-badge').innerText = '0.0 m/s';
+      }
+
+      // Expand 3D LIDAR Ring Wave if active
+      if (state.lidarPulseActive && lidarRingMesh) {
+        state.lidarPulseRadius += 1.1 * f;
+        lidarRingMesh.scale.set(state.lidarPulseRadius, 1, state.lidarPulseRadius);
+        lidarRingMesh.material.opacity = Math.max(0, 0.85 - state.lidarPulseRadius / 75);
+        if (state.lidarPulseRadius > 75) {
+          state.lidarPulseActive = false;
+          lidarRingMesh.material.opacity = 0;
+        }
+      }
+
+      // Update 3D First-Person Camera Position + 1/6G Lunar Stride Bobbing
+      if (fpvCamera && fpvRenderer) {
+        const groundY = getLunarTerrainHeight(state.posX, state.posZ);
+        const bobY = Math.abs(Math.sin(state.walkCycle)) * 0.14; // Lunar low-gravity bounce
+        const swayX = Math.cos(state.walkCycle * 0.5) * 0.04;
+
+        fpvCamera.position.set(state.posX + swayX, groundY + 1.8 + bobY, state.posZ);
+
+        // Calculate local terrain slope
+        const aheadY = getLunarTerrainHeight(state.posX + Math.sin(state.heading * Math.PI / 180) * 2, state.posZ - Math.cos(state.heading * Math.PI / 180) * 2);
+        const slopeDeg = Math.abs((aheadY - groundY) * 14).toFixed(1);
+        document.getElementById('terrain-slope').innerText = `${slopeDeg}°`;
+
+        const lookRad = state.heading * (Math.PI / 180);
+        const pitchRad = state.pitch * (Math.PI / 180);
+        const targetX = state.posX + Math.sin(lookRad) * Math.cos(pitchRad) * 20;
+        const targetY = fpvCamera.position.y + Math.sin(pitchRad) * 20;
+        const targetZ = state.posZ - Math.cos(lookRad) * Math.cos(pitchRad) * 20;
+        fpvCamera.lookAt(targetX, targetY, targetZ);
+
+        updateCenterLaserRangefinder();
+        fpvRenderer.render(fpvScene, fpvCamera);
+
+        // Render Auxiliary Picture-in-Picture (PiP) Multi-Camera Feed
+        if (state.pipVisible && pipRenderer && pipCamera) {
+          if (state.pipModeIdx === 0) {
+            // Rear 180° Helmet Camera
+            pipCamera.position.copy(fpvCamera.position);
+            const backX = state.posX - Math.sin(lookRad) * 20;
+            const backZ = state.posZ + Math.cos(lookRad) * 20;
+            pipCamera.lookAt(backX, fpvCamera.position.y, backZ);
+          } else if (state.pipModeIdx === 1) {
+            // Rover VIPER Remote Cam
+            const rv = state.waypoints[3];
+            const ry = getLunarTerrainHeight(rv.x, rv.z) + 1.5;
+            pipCamera.position.set(rv.x, ry, rv.z);
+            pipCamera.lookAt(state.posX, fpvCamera.position.y, state.posZ);
+          } else {
+            // Orbital Top-Down Recon Satellite
+            pipCamera.position.set(state.posX, 55, state.posZ + 0.01);
+            pipCamera.lookAt(state.posX, groundY, state.posZ);
+          }
+          pipRenderer.render(fpvScene, pipCamera);
+        }
+      }
+
+      // Rotate Mini 3D Hologram in Bottom-Right
+      if (holoGlobe && holoCraterMesh && holoRenderer) {
+        holoGlobe.rotation.y += 0.005 * f;
+        if (holoOuterRing) holoOuterRing.rotation.z -= 0.008 * f;
+        holoCraterMesh.rotation.z = (state.heading * Math.PI) / 180;
+        holoRenderer.render(holoScene, holoCamera);
+      }
+
+      // Render 2D AR Navigation HUD Canvas
+      renderARNavigationOverlay();
+    }
+
+    // --- 5. IMMERSIVE SPACESUIT AUDIO SYNTHESIZER (WEB AUDIO API) ---
+    let audioCtx = null;
+    function toggleAudioSuit() {
+      state.suitAudioEnabled = !state.suitAudioEnabled;
+      const icon = document.getElementById('audio-icon');
+      if (state.suitAudioEnabled) {
+        if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        icon.className = 'fa-solid fa-volume-high text-hud-green';
+        playSuitBeep(660, 0.08);
+        addSysLog("Audio interno del casco EVA activado (Respiración y alertas).");
+      } else {
+        icon.className = 'fa-solid fa-volume-xmark';
+        addSysLog("Audio del casco silenciado.");
+      }
+    }
+
+    function playSuitBeep(freq = 720, duration = 0.08) {
+      if (!state.suitAudioEnabled || !audioCtx) return;
+      const osc = audioCtx.createOscillator();
+      const gain = audioCtx.createGain();
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
+      gain.gain.setValueAtTime(0.06, audioCtx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + duration);
+      osc.connect(gain);
+      gain.connect(audioCtx.destination);
+      osc.start();
+      osc.stop(audioCtx.currentTime + duration);
+    }
+
+    function startMove(dir) { state.moveDir = dir; }
+    function stopMove() { state.moveDir = null; }
+    function recenterLook() { state.pitch = 0; state.roll = 0; addSysLog("Visor nivelado al horizonte lunar."); }
+
+    // --- 5B. NEW ADVANCED FEATURES: SPECTROMETER, PIP, VOICE AI, BREADCRUMBS, VISOR PURGE & GYRO ---
+    function speakSuitVoice(text) {
+      if ('speechSynthesis' in window) {
+        window.speechSynthesis.cancel();
+        const utter = new SpeechSynthesisUtterance(text);
+        utter.lang = 'es-ES';
+        utter.rate = 1.08;
+        utter.pitch = 0.92;
+        window.speechSynthesis.speak(utter);
+      }
+    }
+
+    function triggerSpectrometerScan() {
+      if (!fpvCamera || !fpvTerrain) return;
+      raycaster.setFromCamera(new THREE.Vector2(0, 0), fpvCamera);
+      const hits = raycaster.intersectObjects([fpvTerrain, ...lunarRocks], false);
+      if (hits.length > 0 && hits[0].distance < 65) {
+        const hit = hits[0];
+        const compositions = [
+          'Ilmenita (FeTiO₃) 18% + H₂O 4.2%',
+          'Basalto Olivino + Regolito Polar',
+          'Depósito Hielo Cristalino (H₂O 19%)',
+          'Anortosita Lunar + Helio-3 Trazas'
+        ];
+        const mineral = compositions[state.geologySamples.length % compositions.length];
+        const id = state.geologySamples.length + 1;
+
+        state.geologySamples.push({
+          id,
+          x: hit.point.x,
+          y: hit.point.y,
+          z: hit.point.z,
+          mineral
+        });
+
+        // Add 3D Golden Marker Stick at sample point
+        const pinGeo = new THREE.CylinderGeometry(0.08, 0.08, 1.6, 8);
+        const pinMat = new THREE.MeshBasicMaterial({ color: 0xffcc00 });
+        const pin = new THREE.Mesh(pinGeo, pinMat);
+        pin.position.set(hit.point.x, hit.point.y + 0.8, hit.point.z);
+        fpvScene.add(pin);
+        sampleBeacons3D.push(pin);
+
+        document.getElementById('spectro-readout').innerHTML = `<span class="text-hud-yellow font-bold">#${id}: ${mineral}</span>`;
+        document.getElementById('sample-count-badge').innerText = `${state.geologySamples.length} MUESTRAS`;
+        playSuitBeep(1040, 0.14);
+        addSysLog(`Muestra #${id} marcada (${hit.distance.toFixed(1)}m): ${mineral}`);
+      } else {
+        addSysLog("Espectrómetro: Objetivo fuera de rango (<65m requerido).");
+      }
+    }
+
+    function togglePiPCamera() {
+      state.pipVisible = !state.pipVisible;
+      const panel = document.getElementById('pip-panel');
+      if (panel) panel.classList.toggle('hidden', !state.pipVisible);
+      addSysLog(state.pipVisible ? "Monitor PiP activado." : "Monitor PiP oculto.");
+    }
+
+    function cyclePiPFeed() {
+      state.pipModeIdx = (state.pipModeIdx + 1) % 3;
+      const titles = ['CAM TRASERA 180°', 'ROVER VIPER CAM', 'SATÉLITE ORBITAL'];
+      const tags = ['FOV 110° · ESPALDA DESPEJADA', 'ENLACE RF 2.4GHz · VIPER', 'VISTA CENITAL · 55m ALT'];
+      document.getElementById('pip-mode-title').innerText = titles[state.pipModeIdx];
+      document.getElementById('pip-telemetry-tag').innerText = tags[state.pipModeIdx];
+      playSuitBeep(790, 0.06);
+      addSysLog(`Monitor auxiliar cambiado a: ${titles[state.pipModeIdx]}`);
+    }
+
+    function toggleBreadcrumbs() {
+      state.showBreadcrumbs = !state.showBreadcrumbs;
+      const btn = document.getElementById('btn-breadcrumbs');
+      if (btn) {
+        btn.innerText = state.showBreadcrumbs ? 'RASTRO ON' : 'RASTRO OFF';
+        btn.className = state.showBreadcrumbs
+          ? 'flex-1 py-0.5 px-1 bg-hud-cyan/15 border border-hud-cyan/40 text-hud-cyan rounded text-[8px] font-bold'
+          : 'flex-1 py-0.5 px-1 bg-slate-900 border border-slate-700 text-slate-400 rounded text-[8px] font-bold';
+      }
+    }
+
+    // ============================================================
+    // INTEGRACIÓN BACKEND PYTHON + SIMULADOR C++
+    //  - guardarMiCaminata(): POST de la traza del usuario a Python
+    //  - cargarRutaGlobal():  travesía global de 41 km generada por C++
+    //  - El movimiento del visor NO cambia (misma física)
+    // ============================================================
+    let rutaGlobalLine = null;
+    let guardadoTimer = null;
+
+    function programarGuardadoCaminata() {
+      if (guardadoTimer) return;
+      guardadoTimer = setTimeout(() => {
+        guardadoTimer = null;
+        guardarMiCaminata();
+      }, 8000);
+    }
+
+    async function guardarMiCaminata() {
+      if (!state.userTrail.length) return;
+      const payload = JSON.stringify({ trail: state.userTrail.slice(-2000) });
+      if (!state.serverApi) {
+        // Modo estático (Cloudflare Pages): sin backend, respaldo local del navegador
+        try { localStorage.setItem('lunar_walk_trail', payload); } catch (e2) { /* sin almacenamiento */ }
+        return;
+      }
+      try {
+        const res = await fetch('/api/mi_caminata', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: payload,
+        });
+        if (res.ok) {
+          addSysLog(`💾 Caminata guardada en el servidor Python (${state.userTrail.length} puntos).`);
+        }
+      } catch (err) {
+        // Sin servidor (modo file://): respaldo local del navegador
+        try {
+          localStorage.setItem('lunar_walk_trail', payload);
+        } catch (e2) { /* sin almacenamiento */ }
+      }
+    }
+
+    function dibujarLineaTerreno(puntos, color, opacity, nombre) {
+      if (!fpvScene || !window.THREE) return null;
+      const verts = [];
+      for (const p of puntos) {
+        const y = getLunarTerrainHeight(p.x, p.z) + 0.35;
+        verts.push(p.x, y, p.z);
+      }
+      const geo = new THREE.BufferGeometry();
+      geo.setAttribute('position', new THREE.Float32BufferAttribute(verts, 3));
+      const mat = new THREE.LineBasicMaterial({ color: color, transparent: true, opacity: opacity });
+      const linea = new THREE.Line(geo, mat);
+      linea.name = nombre;
+      fpvScene.add(linea);
+      return linea;
+    }
+
+    async function cargarRutaGlobal() {
+      const btn = document.getElementById('btn-ruta-global');
+      if (!state.serverApi) {
+        addSysLog('⚠ Ruta C++ 41 km: disponible con servidor local (python servidor_lunar.py).');
+        return;
+      }
+      try {
+        if (btn) btn.innerText = 'CARGANDO...';
+        addSysLog('Consultando travesía global del simulador C++ (41 km)...');
+        const res = await fetch('/api/breadcrumbs');
+        if (!res.ok) throw new Error('HTTP ' + res.status);
+        const datos = await res.json();
+        const trail = datos.trail || [];
+        if (!trail.length) throw new Error('Ruta vacía');
+
+        // Muestreo: 6593 migas -> ~800 puntos (la GPU no necesita más)
+        const paso = Math.max(1, Math.floor(trail.length / 800));
+        const muestreado = [];
+        for (let i = 0; i < trail.length; i += paso) muestreado.push(trail[i]);
+        muestreado.push(trail[trail.length - 1]);
+
+        if (rutaGlobalLine) { fpvScene.remove(rutaGlobalLine); rutaGlobalLine.geometry.dispose(); }
+        rutaGlobalLine = dibujarLineaTerreno(muestreado, 0xffcc00, 0.9, 'ruta_global_cpp');
+        state.rutaGlobalActiva = true;
+
+        addSysLog(`✅ Travesía C++ cargada: ${datos.distancia_total_m.toFixed(0)} m, ${datos.migajas} migajas, O₂ final ${datos.o2_restante_pct.toFixed(0)}%.`);
+        playSuitBeep(988, 0.12);
+        if (btn) btn.innerText = 'RUTA C++: ON';
+      } catch (err) {
+        addSysLog('⚠ Ruta C++ no disponible (inicia servidor_lunar.py). ' + err.message);
+        if (btn) btn.innerText = 'RUTA C++';
+      }
+    }
+
+    async function cargarMiCaminataGuardada() {
+      if (!state.serverApi) return;  // modo estático/file://: usa localStorage si existe
+      try {
+        const res = await fetch('/api/mi_caminata');
+        if (!res.ok) return;
+        const datos = await res.json();
+        const trail = datos.trail || [];
+        if (trail.length > 3) {
+          dibujarLineaTerreno(trail, 0x00f0ff, 0.5, 'mi_caminata_guardada');
+          addSysLog(`🧭 Caminata anterior restaurada del servidor (${trail.length} puntos).`);
+        }
+      } catch (err) { /* modo file:// sin servidor: silencioso */ }
+    }
+
+    function purgeVisorDust() {
+      const fx = document.getElementById('visor-glass-fx');
+      if (fx) {
+        fx.style.opacity = '0';
+        setTimeout(() => { fx.style.opacity = '0.12'; }, 4000);
+      }
+      document.getElementById('env-dust').innerText = '1%';
+      playSuitBeep(1200, 0.1);
+      addSysLog("Purga electrostática ejecutada: Polvo lunar y vaho eliminados del cristal.");
+    }
+
+    // Hands-Free Voice Control (Web Speech API)
+    let recognition = null;
+    function toggleVoiceControl() {
+      const SpeechRec = window.SpeechRecognition || window.webkitSpeechRecognition;
+      if (!SpeechRec) {
+        addSysLog("Control por voz no soportado en este navegador. Prueba en Chrome/Edge.");
+        return;
+      }
+      if (!state.voiceActive) {
+        recognition = new SpeechRec();
+        recognition.lang = 'es-ES';
+        recognition.continuous = true;
+        recognition.interimResults = false;
+        recognition.onresult = (event) => {
+          const transcript = event.results[event.results.length - 1][0].transcript.toLowerCase();
+          addSysLog(`Voz detectada: "${transcript}"`);
+          if (transcript.includes('lidar') || transcript.includes('escanear')) {
+            triggerLidarScanWave();
+            speakSuitVoice('Escaneo lidar ejecutado');
+          } else if (transcript.includes('térmico') || transcript.includes('termico')) {
+            setOpticalFilter('thermal');
+            speakSuitVoice('Visor térmico activado');
+          } else if (transcript.includes('nocturno') || transcript.includes('noche')) {
+            setOpticalFilter('night');
+            speakSuitVoice('Visión nocturna activada');
+          } else if (transcript.includes('normal') || transcript.includes('óptico')) {
+            setOpticalFilter('normal');
+            speakSuitVoice('Visor óptico normal');
+          } else if (transcript.includes('muestra') || transcript.includes('espectro')) {
+            triggerSpectrometerScan();
+            speakSuitVoice('Analizando composición mineral');
+          } else if (transcript.includes('limpiar') || transcript.includes('purgar')) {
+            purgeVisorDust();
+            speakSuitVoice('Cristal del visor limpio');
+          } else if (transcript.includes('cámara') || transcript.includes('trasera')) {
+            cyclePiPFeed();
+            speakSuitVoice('Cambiando cámara auxiliar');
+          }
+        };
+        recognition.start();
+        state.voiceActive = true;
+        document.getElementById('voice-icon').className = 'fa-solid fa-microphone text-hud-green animate-pulse';
+        speakSuitVoice('Comandos por voz del casco activados');
+        addSysLog('Voz IA activa. Di: "Escanear", "Térmico", "Muestra", "Limpiar" o "Cámara".');
+      } else {
+        if (recognition) recognition.stop();
+        state.voiceActive = false;
+        document.getElementById('voice-icon').className = 'fa-solid fa-microphone-slash';
+        addSysLog('Control por voz desactivado.');
+      }
+    }
+
+    function toggleGyroscope() {
+      state.gyroActive = !state.gyroActive;
+      if (state.gyroActive) {
+        window.addEventListener('deviceorientation', (e) => {
+          if (!state.gyroActive || e.alpha === null) return;
+          state.heading = (360 - e.alpha) % 360;
+          state.pitch = Math.max(-40, Math.min(40, (e.beta || 0) - 45));
+        });
+        addSysLog("Giroscopio físico del dispositivo vinculado al visor.");
+      } else {
+        addSysLog("Giroscopio desvinculado.");
+      }
+    }
+
+    // --- 6. SENSORS, CAMERA, FILTERS & UI HANDLERS ---
+    function setHudOpacity(val) {
+      document.documentElement.style.setProperty('--hud-alpha', val);
+    }
+
+    function toggleSection(id) {
+      const el = document.getElementById(id);
+      if (el) el.classList.toggle('hidden');
+    }
+
+    function renderSensors() {
+      const container = document.getElementById('sensors-container');
+      if (!container) return;
+      container.innerHTML = '';
+
+      state.sensors.forEach((s) => {
+        let pct = 50;
+        if (s.type === 'distance') {
+          pct = Math.max(5, Math.min(100, (s.val / s.max) * 100));
+        } else if (s.type === 'temp') {
+          pct = Math.max(5, Math.min(100, ((s.val - s.min) / (s.max - s.min)) * 100));
+        } else if (s.type === 'cv') {
+          pct = Math.max(2, Math.min(100, s.val));
+        }
+
+        const isWarn = (s.type === 'distance' && s.val < 5.0) || (s.type === 'cv' && s.val > 30);
+        const barColor = isWarn ? 'bg-hud-pink shadow-[0_0_6px_#ff0055]' : 'bg-hud-green shadow-[0_0_6px_#00ff66]';
+
+        const row = document.createElement('div');
+        row.className = 'bg-slate-950/15 px-1.5 py-1 rounded border border-hud-cyan/15 font-mono text-[10px]';
+        row.innerHTML = `
+          <div class="flex justify-between items-center mb-0.5">
+            <span class="text-slate-200 truncate">${s.name}</span>
+            <span class="${isWarn ? 'text-hud-pink' : 'text-hud-cyan'} font-bold">${Number(s.val).toFixed(1)} ${s.unit}</span>
+          </div>
+          <div class="w-full h-1 bg-slate-950/40 rounded overflow-hidden">
+            <div class="${barColor} h-full transition-all duration-300" style="width: ${pct}%"></div>
+          </div>
+        `;
+        container.appendChild(row);
+      });
+
+      // Fila ESP32 USB (telemetría real de la placa) — textContent, XSS-safe
+      if (state.espConnected && state.espLastUplink) {
+        const erow = document.createElement('div');
+        erow.className = 'bg-slate-950/15 px-1.5 py-1 rounded border border-hud-green/40 font-mono text-[10px]';
+        const head = document.createElement('div');
+        head.className = 'flex justify-between items-center';
+        const nm = document.createElement('span');
+        nm.className = 'text-slate-200 truncate';
+        nm.textContent = 'ESP32 USB';
+        const vl = document.createElement('span');
+        vl.className = 'text-hud-green font-bold';
+        vl.textContent = 'lidar ' + fmt(state.espLidar) + 'm · ultra ' + fmt(state.espUltra) + 'm · temp ' + fmt(state.espTemp) + '°C';
+        head.appendChild(nm);
+        head.appendChild(vl);
+        erow.appendChild(head);
+        container.appendChild(erow);
+      }
+
+      const countEl = document.getElementById('active-sensor-count');
+      if (countEl) countEl.innerText = `${state.sensors.length} ACT.`;
+    }
+
+    async function toggleRealCamera() {
+      const video = document.getElementById('webcam-video');
+      const btnText = document.getElementById('cam-btn-text');
+
+      if (!state.cameraActive) {
+        try {
+          const stream = await navigator.mediaDevices.getUserMedia({
+            video: { facingMode: 'environment' },
+            audio: false
+          });
+          video.srcObject = stream;
+          video.classList.remove('hidden');
+          fpvContainer.classList.add('opacity-40');
+          state.cameraActive = true;
+          btnText.innerText = 'CÁMARA ON';
+          addSysLog("Cámara física WebRTC vinculada al visor AR.");
+          iniciarVisionIA();
+        } catch (err) {
+          addSysLog("Cámara física no disponible; manteniendo simulación 3D lunar.");
+        }
+      } else {
+        detenerVisionIA();
+        if (video.srcObject) {
+          video.srcObject.getTracks().forEach(t => t.stop());
+          video.srcObject = null;
+        }
+        video.classList.add('hidden');
+        fpvContainer.classList.remove('opacity-40');
+        state.cameraActive = false;
+        btnText.innerText = 'CÁMARA AR';
+        addSysLog("Modo simulación 3D en primera persona restaurado.");
+      }
+    }
+
+    // ============================================================
+    // VISIÓN ARTIFICIAL (idea del visor v2, integrada y ampliada)
+    // Detección de movimiento/obstáculos por DIFERENCIA DE FOTOGRAMAS
+    // a 5 Hz sobre la cámara real — 100% local, sin librerías externas.
+    // Resultados:
+    //   1. Sensor virtual "Visión IA (Cámara)" en el panel de sensores
+    //   2. Marcador de detección (caja + cruce + %) sobre la cámara
+    //   3. Alerta de obstáculo cuando el movimiento es sostenido
+    // ============================================================
+    let cvCanvas = null, cvCtx = null, cvPrev = null, cvTimer = null;
+    let cvOverlay = null, cvOverlayCtx = null, cvStreak = 0;
+
+    function iniciarVisionIA() {
+      const video = document.getElementById('webcam-video');
+      if (!cvCanvas) {
+        cvCanvas = document.createElement('canvas');
+        cvCanvas.width = 160; cvCanvas.height = 120;
+        cvCtx = cvCanvas.getContext('2d', { willReadFrequently: true });
+      }
+      if (!cvOverlay) {
+        cvOverlay = document.createElement('canvas');
+        cvOverlay.className = 'absolute inset-0 w-full h-full pointer-events-none';
+        cvOverlay.style.zIndex = '5';
+        const viewport = document.getElementById('fpv-viewport');
+        viewport.appendChild(cvOverlay);
+        cvOverlayCtx = cvOverlay.getContext('2d');
+      }
+      cvOverlay.style.display = 'block';
+      cvPrev = null;
+      cvStreak = 0;
+      state.visionAIActive = true;
+      cvTimer = setInterval(procesarFrameVision, 200);
+      addSysLog("👁 Visión artificial activa (5 Hz): movimiento y obstáculos.");
+      playSuitBeep(1040, 0.1);
+    }
+
+    function detenerVisionIA() {
+      if (cvTimer) { clearInterval(cvTimer); cvTimer = null; }
+      if (cvOverlay) cvOverlay.style.display = 'none';
+      state.visionAIActive = false;
+      state.sensors.find(s => s.type === 'cv').val = 0;
+      renderSensors();
+    }
+
+    function procesarFrameVision() {
+      const video = document.getElementById('webcam-video');
+      if (!video.srcObject || video.readyState < 2 || !cvCtx) return;
+      try {
+        cvCtx.drawImage(video, 0, 0, 160, 120);
+        const img = cvCtx.getImageData(0, 0, 160, 120);
+        const d = img.data;
+        const W = 160, H = 120, N = W * H;
+
+        if (!cvPrev) {
+          cvPrev = new Uint8ClampedArray(N * 3);
+          for (let i = 0; i < N; i++) {
+            cvPrev[i*3] = d[i*4]; cvPrev[i*3+1] = d[i*4+1]; cvPrev[i*3+2] = d[i*4+2];
+          }
+          return;
+        }
+
+        // Diferencia de fotogramas con umbral
+        let motion = 0, sx = 0, sy = 0;
+        let minX = W, minY = H, maxX = 0, maxY = 0;
+        for (let i = 0; i < N; i++) {
+          const dr = Math.abs(d[i*4]   - cvPrev[i*3]);
+          const dg = Math.abs(d[i*4+1] - cvPrev[i*3+1]);
+          const db = Math.abs(d[i*4+2] - cvPrev[i*3+2]);
+          if (dr + dg + db > 90) {
+            motion++;
+            const x = i % W, y = (i / W) | 0;
+            sx += x; sy += y;
+            if (x < minX) minX = x;
+            if (x > maxX) maxX = x;
+            if (y < minY) minY = y;
+            if (y > maxY) maxY = y;
+          }
+        }
+        for (let i = 0; i < N; i++) {
+          cvPrev[i*3] = d[i*4]; cvPrev[i*3+1] = d[i*4+1]; cvPrev[i*3+2] = d[i*4+2];
+        }
+
+        const score = Math.min(100, Math.round((motion / N) * 400)); // normalizado a %
+
+        // Actualizar el sensor virtual del panel
+        const sensor = state.sensors.find(s => s.type === 'cv');
+        if (sensor) sensor.val = score;
+        renderSensors();
+
+        // Detección sostenida -> alerta de obstáculo (2 frames seguidos)
+        if (score > 25) {
+          cvStreak++;
+          if (cvStreak === 2) {
+            addSysLog(`⚠ Visión IA: MOVIMIENTO DETECTADO (${score}%) — posible obstáculo u objeto.`);
+            playSuitBeep(1318, 0.14);
+          }
+        } else {
+          cvStreak = 0;
+        }
+
+        dibujarOverlayVision(score, motion > 0 ? { x: sx / motion, y: sy / motion } : null,
+          motion > 0 ? { minX, minY, maxX, maxY } : null, W, H);
+      } catch (err) { /* frame intermedio incoherente: ignorar */ }
+    }
+
+    function dibujarOverlayVision(score, centro, bbox, W, H) {
+      if (!cvOverlayCtx) return;
+      const w = cvOverlay.width = cvOverlay.clientWidth || 640;
+      const h = cvOverlay.height = cvOverlay.clientHeight || 480;
+      const ctx = cvOverlayCtx;
+      ctx.clearRect(0, 0, w, h);
+
+      // Etiqueta de estado
+      ctx.font = 'bold 12px monospace';
+      ctx.fillStyle = score > 25 ? '#ff4466' : '#00ff88';
+      ctx.fillText(`VISIÓN IA: ${score}% MOV`, 12, h - 16);
+
+      if (!centro || !bbox || score < 6) return;
+
+      // Caja envolvente de la zona de movimiento
+      const x0 = (bbox.minX / W) * w, y0 = (bbox.minY / H) * h;
+      const x1 = (bbox.maxX / W) * w, y1 = (bbox.maxY / H) * h;
+      ctx.strokeStyle = score > 25 ? '#ff4466' : '#00ff88';
+      ctx.lineWidth = 2;
+      ctx.setLineDash([6, 4]);
+      ctx.strokeRect(x0, y0, x1 - x0, y1 - y0);
+      ctx.setLineDash([]);
+
+      // Cruz en el centroide
+      const cx = (centro.x / W) * w, cy = (centro.y / H) * h;
+      ctx.beginPath();
+      ctx.moveTo(cx - 10, cy); ctx.lineTo(cx + 10, cy);
+      ctx.moveTo(cx, cy - 10); ctx.lineTo(cx, cy + 10);
+      ctx.stroke();
+      ctx.fillText(`${score}%`, cx + 8, cy - 8);
+    }
+
+    function setOpticalFilter(mode) {
+      state.opticalFilter = mode;
+      const viewport = document.getElementById('fpv-viewport');
+      viewport.className = 'fixed inset-0 z-0 overflow-hidden bg-black transition-all duration-500';
+
+      if (fpvTerrain) {
+        fpvTerrain.material.wireframe = (mode === 'lidar');
+      }
+
+      if (mode === 'thermal') {
+        viewport.classList.add('filter-thermal');
+      } else if (mode === 'night') {
+        viewport.classList.add('filter-night');
+      } else if (mode === 'lidar') {
+        viewport.classList.add('filter-highcontrast');
+        triggerLidarScanWave();
+      } else {
+        viewport.classList.add('filter-normal');
+      }
+      addSysLog(`Filtro óptico cambiado a: ${mode.toUpperCase()}`);
+    }
+
+    function toggleDeclutter() {
+      state.declutter = !state.declutter;
+      const leftWing = document.getElementById('left-hud-wing');
+      const rightWing = document.getElementById('right-hud-wing');
+      if (state.declutter) {
+        leftWing.classList.add('opacity-15', 'hover:opacity-100');
+        rightWing.classList.add('opacity-15', 'hover:opacity-100');
+        addSysLog("Modo Visor Despejado activado.");
+      } else {
+        leftWing.classList.remove('opacity-15', 'hover:opacity-100');
+        rightWing.classList.remove('opacity-15', 'hover:opacity-100');
+        addSysLog("Paneles periféricos restaurados.");
+      }
+    }
+
+    function togglePathGuide() {
+      state.showArPath = !state.showArPath;
+      const btn = document.getElementById('btn-path-guide');
+      btn.innerText = state.showArPath ? 'GUÍA AR: ACTIVA' : 'GUÍA AR: OCULTA';
+      btn.className = state.showArPath
+        ? 'mt-1 w-full py-1 px-2 bg-hud-green/20 border border-hud-green/50 text-hud-green rounded text-[9px] font-bold'
+        : 'mt-1 w-full py-1 px-2 bg-slate-900 border border-slate-700 text-slate-400 rounded text-[9px] font-bold';
+    }
+
+    function changeActiveWaypoint(idx) {
+      state.activeWaypointIdx = parseInt(idx, 10) || 0;
+      const wp = state.waypoints[state.activeWaypointIdx];
+      if (waypointBeacon) {
+        waypointBeacon.position.set(wp.x, getLunarTerrainHeight(wp.x, wp.z) + 22, wp.z);
+        waypointBeacon.material.color.set(wp.color);
+      }
+      playSuitBeep(780, 0.08);
+      addSysLog(`Nuevo Waypoint fijado: ${wp.name}`);
+    }
+
+    // ============================================================
+    // NASA JPL HORIZONS — Datos reales de efemérides solares
+    // direct fetch → CORS relay → fallback de simulación
+    // ============================================================
+    const SITE_COORDS = {
+      shackleton: { lat: -89.9, lon: 0.0 },
+      malapert: { lat: -85.9, lon: 0.9 },
+      cabeus: { lat: -84.9, lon: -35.5 },
+      tranquillity: { lat: 8.5, lon: 31.4 }
+    };
+
+    function parseHorizonsAZEL(text) {
+      // Extrae AZ/EL aparentes del bloque $$SOE..$$EOE (QUANTITIES='4')
+      const s = text.indexOf('$$SOE');
+      const e = text.indexOf('$$EOE');
+      if (s === -1 || e === -1 || e <= s) return null;
+      const firstLine = text.substring(s + 5, e).trim().split('\n')[0];
+      if (!firstLine) return null;
+      const nums = firstLine.trim().split(/\s+/).map(Number).filter(Number.isFinite);
+      // Últimos dos números = Azimut, Elevación aparente
+      if (nums.length < 2) return null;
+      const az = nums[nums.length - 2];
+      const el = nums[nums.length - 1];
+      // Validación sanitaria: rango físico válido
+      if (az < 0 || az > 360 || el < -90 || el > 90) return null;
+      return { az: az, el: el };
+    }
+
+    function setSiteDataSource(label, real) {
+      const el = document.getElementById('site-data-source');
+      if (!el) return;
+      // Solo texto plano: nunca innerHTML con datos externos
+      el.textContent = real ? (label + ' ✓') : label;
+      el.style.color = real ? '#00ff66' : '#ffcc00';
+    }
+
+    async function fetchJPLSolar() {
+      const siteKey = (document.getElementById('landing-site-select') || {}).value || 'shackleton';
+      const c = SITE_COORDS[siteKey] || SITE_COORDS.shackleton;
+      const nowUTC = new Date();
+      const iso = nowUTC.toISOString().substring(0, 13) + ':00';
+      const isoEnd = new Date(nowUTC.getTime() + 3600000).toISOString().substring(0, 13) + ':00';
+      const base = "https://ssd.jpl.nasa.gov/api/horizons.api?format=text" +
+        "&COMMAND='10'&OBJ_DATA='NO'&MAKE_EPHEM='YES'&EPHEM_TYPE='OBSERVER'" +
+        "&CENTER='coord@301'&COORD_TYPE='GEODETIC'" +
+        "&SITE_COORD='" + c.lat + "," + c.lon + ",0'" +
+        "&START_TIME='" + iso + "'&STOP_TIME='" + isoEnd + "'&STEP_SIZE='30m'&QUANTITIES='4'";
+      setSiteDataSource('CONSULTANDO NASA JPL...', false);
+      addSysLog('Consultando NASA JPL Horizons (efemérides reales del Sol)...');
+      playSuitBeep(660, 0.08);
+
+      const attempts = [
+        '/api/horizons?site=' + encodeURIComponent(siteKey),  // proxy Python: sin CORS
+        "https://startroot-horizons.ferming1541.workers.dev/api/horizons.api?" + base.split('?')[1],  // Worker Cloudflare propio: CORS OK
+        base,                                                  // directo a NASA
+        "https://api.allorigins.win/raw?url=" + encodeURIComponent(base)  // relay
+      ];
+      for (const url of attempts) {
+        try {
+          const ctrl = new AbortController();
+          const timer = setTimeout(() => ctrl.abort(), 15000);
+          const res = await fetch(url, { signal: ctrl.signal });
+          clearTimeout(timer);
+          if (!res.ok) continue;
+          let parsed = null;
+          if (url.startsWith('/api')) {
+            // Respuesta JSON del servidor lunar Python (datos ya validados)
+            const j = await res.json();
+            if (typeof j.el === 'number' && typeof j.az === 'number' &&
+                j.az >= 0 && j.az <= 360 && j.el >= -90 && j.el <= 90 &&
+                j.source && String(j.source).indexOf('REAL') !== -1) {
+              parsed = { az: j.az, el: j.el };
+            }
+          } else {
+            parsed = parseHorizonsAZEL(await res.text());
+          }
+          if (parsed) {
+            // ¡Dato real de NASA! Actualiza el Sol 3D y la telemetría con EL real
+            updateSolarElevation(parsed.el);
+            setSiteDataSource('NASA JPL HORIZONS REAL: EL ' + parsed.el.toFixed(1) + '° AZ ' + parsed.az.toFixed(1) + '°', true);
+            state.solarSourceReal = true;
+            addSysLog('✅ Efemérides reales de NASA JPL Horizons aplicadas (Sol: elev ' + parsed.el.toFixed(1) + '°, azim ' + parsed.az.toFixed(1) + '°).');
+            playSuitBeep(988, 0.12);
+            return parsed;
+          }
+        } catch (err) { /* siguiente intento */ }
+      }
+      state.solarSourceReal = false;
+      setSiteDataSource('SIMULADO (NASA NO DISPONIBLE)', false);
+      addSysLog('⚠ NASA JPL sin conexión; manteniendo efemérides simuladas.');
+      return null;
+    }
+
+    function onSiteChange(siteKey) {
+      const sites = {
+        shackleton: { tag: 'SHACKLETON', temp: '-170°C', uv: '3 IDX', dust: '10%', elev: 0.1 },
+        malapert: { tag: 'MALAPERT', temp: '-95°C', uv: '7 IDX', dust: '4%', elev: 14.5 },
+        cabeus: { tag: 'CABEUS', temp: '-210°C', uv: '1 IDX', dust: '16%', elev: 0.0 },
+        tranquillity: { tag: 'TRANQUILIDAD', temp: '+105°C', uv: '9 IDX', dust: '8%', elev: 38.0 }
+      };
+      const cfg = sites[siteKey] || sites.shackleton;
+      document.getElementById('site-short-tag').innerText = cfg.tag;
+      document.getElementById('env-temp').innerText = cfg.temp;
+      document.getElementById('env-uv').innerText = cfg.uv;
+      document.getElementById('env-dust').innerText = cfg.dust;
+      document.getElementById('solar-slider').value = cfg.elev;
+      updateSolarElevation(cfg.elev);
+      addSysLog(`Sitio cambiado a ${cfg.tag}. Efemérides actualizadas.`);
+    }
+
+    function updateSolarElevation(val) {
+      const deg = parseFloat(val);
+      state.solarElevation = deg;
+      document.getElementById('solar-elev-val').innerText = deg.toFixed(1);
+      document.getElementById('slider-deg-label').innerText = `${deg.toFixed(1)}°`;
+      const alertDeg = document.getElementById('alert-solar-deg');
+      if (alertDeg) alertDeg.innerText = deg.toFixed(1);
+
+      const powerPct = Math.min(100, Math.round((deg / 25) * 100));
+      const powerEl = document.getElementById('solar-power');
+      powerEl.innerText = `${powerPct}% rend.`;
+
+      const banner = document.getElementById('alert-banner');
+      const title = document.getElementById('alert-title');
+      const sub = document.getElementById('alert-subtitle');
+      const commsVis = document.getElementById('comms-vis');
+      const commsSig = document.getElementById('comms-signal');
+
+      if (sunLight && sunSphere) {
+        const yHeight = Math.max(1.5, Math.sin((deg * Math.PI) / 180) * 350);
+        sunLight.position.set(0, yHeight, -350);
+        sunSphere.position.copy(sunLight.position);
+        sunLight.intensity = 1.1 + (deg / 45) * 1.6;
+      }
+
+      if (deg < 2.0) {
+        banner.className = 'ar-warning rounded-full px-5 py-0.5 pointer-events-auto flex items-center gap-3 transition-all duration-300';
+        title.innerHTML = `ENERGÍA CRÍTICA: SOL A <span id="alert-solar-deg">${deg.toFixed(1)}</span>°`;
+        title.className = 'text-xs font-mono font-bold tracking-wider text-hud-pink uppercase';
+        sub.innerText = 'Poca generación solar';
+        powerEl.className = 'text-hud-pink font-bold';
+        commsVis.innerText = 'OCULTA (LOS)';
+        commsVis.className = 'text-hud-pink font-bold';
+        commsSig.innerText = '0% intensidad';
+        commsSig.className = 'text-hud-pink font-bold';
+      } else {
+        banner.className = 'ar-panel rounded-full px-5 py-0.5 pointer-events-auto flex items-center gap-3 transition-all duration-300 border-hud-green/60';
+        title.innerHTML = `ENERGÍA NOMINAL: SOL A <span id="alert-solar-deg">${deg.toFixed(1)}</span>°`;
+        title.className = 'text-xs font-mono font-bold tracking-wider text-hud-green uppercase';
+        sub.innerText = 'Generación fotovoltaica estable';
+        powerEl.className = 'text-hud-green font-bold';
+        commsVis.innerText = 'DIRECTA (LOS)';
+        commsVis.className = 'text-hud-green font-bold';
+        commsSig.innerText = `${Math.min(98, 45 + powerPct)}% intensidad`;
+        commsSig.className = 'text-hud-green font-bold';
+      }
+    }
+
+    function toggleSensorModal() {
+      document.getElementById('sensor-modal').classList.toggle('hidden');
+    }
+
+    function addNewSensorFromModal() {
+      const nameInput = document.getElementById('new-sensor-name');
+      const typeSelect = document.getElementById('new-sensor-type');
+      const name = nameInput.value.trim() || `Sensor Auxiliar #${state.sensors.length + 1}`;
+      const typeKey = typeSelect.value;
+
+      const isTemp = typeKey === 'thermal';
+      state.sensors.push({
+        name,
+        val: isTemp ? -42.0 : 15.5,
+        unit: isTemp ? '°C' : 'm',
+        min: isTemp ? -200 : 0,
+        max: isTemp ? 100 : 60,
+        type: isTemp ? 'temp' : 'distance'
+      });
+
+      nameInput.value = '';
+      renderSensors();
+      toggleSensorModal();
+      addSysLog(`Módulo instalado en el visor: ${name}`);
+    }
+
+    async function connectWebSerial() {
+      if ('serial' in navigator) {
+        try {
+          await navigator.serial.requestPort();
+          addSysLog("Puerto USB/WebSerial vinculado correctamente.");
+        } catch (err) {
+          addSysLog("Vinculación USB cancelada o sin dispositivo seleccionado.");
+        }
+      } else {
+        addSysLog("WebSerial API no soportada en este navegador; usando bus simulado.");
+      }
+    }
+
+    function openReportModal() {
+      const wp = state.waypoints[state.activeWaypointIdx];
+      const report = {
+        timestampUTC: new Date().toISOString(),
+        metClock: document.getElementById('met-clock').innerText,
+        position: { x: Number(state.posX.toFixed(2)), z: Number(state.posZ.toFixed(2)), headingDeg: Math.round(state.heading) },
+        activeWaypoint: wp.name,
+        solarElevationDeg: state.solarElevation,
+        sensors: state.sensors
+      };
+      document.getElementById('report-content').innerText = JSON.stringify(report, null, 2);
+      document.getElementById('report-modal').classList.remove('hidden');
+    }
+
+    function closeReportModal() {
+      document.getElementById('report-modal').classList.add('hidden');
+    }
+
+    function downloadReportJSON() {
+      const text = document.getElementById('report-content').innerText;
+      const blob = new Blob([text], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `reporte-eva-${Date.now()}.json`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+    }
+
+    function addSysLog(msg) {
+      const box = document.getElementById('sys-log');
+      const t = new Date().toTimeString().split(' ')[0];
+      const div = document.createElement('div');
+      // Nota de seguridad: se usa textContent (no innerHTML) para evitar XSS
+      // desde entradas no confiables (p. ej. transcripciones de voz o USB).
+      const timeSpan = document.createElement('span');
+      timeSpan.className = 'text-hud-cyan/60';
+      timeSpan.textContent = `[${t}]`;
+      div.appendChild(timeSpan);
+      div.appendChild(document.createTextNode(' ' + msg));
+      box.appendChild(div);
+      box.scrollTop = box.scrollHeight;
+      state.sysLogHistory.push(msg);
+      if (state.sysLogHistory.length > 30) state.sysLogHistory.shift();
+    }
+
+    setInterval(() => {
+      state.metSeconds++;
+      const h = String(Math.floor(state.metSeconds / 3600)).padStart(2, '0');
+      const m = String(Math.floor((state.metSeconds % 3600) / 60)).padStart(2, '0');
+      const s = String(state.metSeconds % 60).padStart(2, '0');
+      document.getElementById('met-clock').innerText = `${h}:${m}:${s}`;
+      renderSensors();
+    }, 1000);
+
+    window.onload = function () {
+      initFirstPersonWorld();
+      initMiniHoloGlobe();
+      renderSensors();
+      animateLoop();
+      bindWristUI();
+      startTacticalSystems();
+      addSysLog("Visor AR unificado iniciado (DEM LRO/LOLA + A* metabólico + C&W + Fail-Safe + ESP32).");
+      addSysLog("Backend: python servidor_lunar.py  |  Simulador: simulador_caminata.exe");
+      loadDEM();
+      fetchJPLSolar();
+      fetchEarthHorizons();
+      probeServerAPI().then(() => { cargarMiCaminataGuardada(); });
+    };
+
+    window.addEventListener('resize', () => {
+      if (fpvCamera && fpvRenderer) {
+        fpvCamera.aspect = window.innerWidth / window.innerHeight;
+        fpvCamera.updateProjectionMatrix();
+        fpvRenderer.setSize(window.innerWidth, window.innerHeight);
+      }
+    });
+
+    // ============================================================
+    // VISOR UNIFICADO — NUEVAS CAPACIDADES
+    //   1. Terreno real LRO/LOLA (DEM)         2. Corredor A* metabólico
+    //   3. C&W Clases 1/2/3 + Fail-Safe M      4. Tierra real + ocultación
+    //   5. Puente ESP32 bidireccional          6. Pantalla táctica de muñeca
+    // La física de movimiento (animateLoop) NO se modifica.
+    // ============================================================
+
+    // ---- utilidades ----
+    // Sondeo único al arranque: ¿hay backend local (python servidor_lunar.py)?
+    // Si no (Cloudflare Pages / file://), se omiten los endpoints /api para no
+    // ensuciar la consola con 404/405 — los datos reales llegan vía el Worker.
+    async function probeServerAPI() {
+      try {
+        const ctrl = new AbortController();
+        const t = setTimeout(() => ctrl.abort(), 3000);
+        const r = await fetch('/api/status', { signal: ctrl.signal });
+        clearTimeout(t);
+        // Cloudflare Pages responde 200 con index.html para rutas /api/* (SPA fallback):
+        // hay que comprobar que el cuerpo sea REALMENTE el JSON del backend.
+        const j = r.ok ? await r.json().catch(() => null) : null;
+        state.serverApi = !!(j && j.servidor && String(j.servidor).indexOf('Python') !== -1);
+      } catch (e) {
+        state.serverApi = false;
+      }
+      if (state.serverApi) {
+        addSysLog('Backend local detectado (/api disponible).');
+      } else {
+        addSysLog('Modo estático: API local omitida (efemérides reales vía Worker Cloudflare).');
+      }
+    }
+    function fmt(n, d) { return (n === undefined || n === null || !isFinite(n)) ? '—' : Number(n).toFixed(d === undefined ? 1 : d); }
+    function clamp(v, a, b) { return v < a ? a : (v > b ? b : v); }
+    function fmod(a, m) { return ((a % m) + m) % m; }
+
+    // ---- montículo binario mínimo (sin librerías) ----
+    function MinHeap() { this.a = []; }
+    MinHeap.prototype.push = function (item) {
+      const a = this.a; a.push(item);
+      let i = a.length - 1;
+      while (i > 0) {
+        const p = (i - 1) >> 1;
+        if (a[p][0] <= a[i][0]) break;
+        const t = a[p]; a[p] = a[i]; a[i] = t; i = p;
+      }
+    };
+    MinHeap.prototype.pop = function () {
+      const a = this.a;
+      if (!a.length) return null;
+      const top = a[0], last = a.pop();
+      if (a.length) {
+        a[0] = last; let i = 0;
+        for (;;) {
+          const l = i * 2 + 1, r = l + 1; let m = i;
+          if (l < a.length && a[l][0] < a[m][0]) m = l;
+          if (r < a.length && a[r][0] < a[m][0]) m = r;
+          if (m === i) break;
+          const t = a[m]; a[m] = a[i]; a[i] = t; i = m;
+        }
+      }
+      return top;
+    };
+    MinHeap.prototype.empty = function () { return this.a.length === 0; };
+
+    // ============================================================
+    // (1) TERRENO REAL LRO/LOLA
+    // ============================================================
+    function disposeMesh(m) {
+      if (!m) return;
+      if (m.parent) m.parent.remove(m);
+      if (m.geometry) m.geometry.dispose();
+      if (m.material) m.material.dispose();
+    }
+
+    function rebuildTerrainMeshes() {
+      if (!fpvScene) return;
+      disposeMesh(fpvTerrain); fpvTerrain = null;
+      disposeMesh(terrenoGlobal); terrenoGlobal = null;
+      disposeMesh(terrenoSkirt); terrenoSkirt = null;
+
+      const useDEM = !!(demData && demMeta);
+      const demRange = useDEM ? Math.max(1, demMeta.z_max - demMeta.z_min) : 1;
+
+      // (A) Malla local de detalle 500x500 m — objetivo del raycaster
+      const groundGeo = new THREE.PlaneGeometry(500, 500, 130, 130);
+      groundGeo.rotateX(-Math.PI / 2);
+      const pos = groundGeo.attributes.position;
+      const colors = [];
+      for (let i = 0; i < pos.count; i++) {
+        const vx = pos.getX(i);
+        const vz = pos.getZ(i);
+        const vy = getLunarTerrainHeight(vx, vz);
+        pos.setY(i, vy);
+        let shade;
+        if (useDEM) {
+          shade = 0.22 + Math.min(0.3, Math.max(0, ((vy - demMeta.z_min) / demRange) * 0.5));
+        } else {
+          shade = 0.28 + Math.min(0.25, Math.max(-0.1, vy * 0.04));
+        }
+        colors.push(shade, shade * 1.03, shade * 1.08);
+      }
+      groundGeo.setAttribute('color', new THREE.Float32BufferAttribute(colors, 3));
+      groundGeo.computeVertexNormals();
+      const groundMat = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.92, metalness: 0.08, wireframe: false });
+      fpvTerrain = new THREE.Mesh(groundGeo, groundMat);
+      fpvTerrain.name = "REGOLITO LUNAR";
+      fpvScene.add(fpvTerrain);
+
+      if (useDEM) {
+        // (B) DEM 20x20 km (región de detalle real, 380x380)
+        const demPlane = new THREE.PlaneGeometry(20000, 20000, 380, 380);
+        demPlane.rotateX(-Math.PI / 2);
+        const dPos = demPlane.attributes.position;
+        const dColors = [];
+        for (let i = 0; i < dPos.count; i++) {
+          const vx = dPos.getX(i);
+          const vz = dPos.getZ(i);
+          const vy = heightReal(vx, vz) - 0.06; // 6 cm bajo el local: sin z-fight
+          dPos.setY(i, vy);
+          const shade = 0.2 + Math.min(0.3, Math.max(0, ((vy - demMeta.z_min) / demRange) * 0.5));
+          dColors.push(shade * 0.95, shade, shade * 1.05);
+        }
+        demPlane.setAttribute('color', new THREE.Float32BufferAttribute(dColors, 3));
+        demPlane.computeVertexNormals();
+        const demMat = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.95, metalness: 0.05 });
+        terrenoGlobal = new THREE.Mesh(demPlane, demMat);
+        terrenoGlobal.name = "TERRENO REAL DEM 20KM";
+        fpvScene.add(terrenoGlobal);
+
+        // (C) Falda 50 km con alturas de borde DEM recortadas (clamp)
+        const skirt = new THREE.PlaneGeometry(50000, 50000, 200, 200);
+        skirt.rotateX(-Math.PI / 2);
+        const sPos = skirt.attributes.position;
+        const sColors = [];
+        for (let i = 0; i < sPos.count; i++) {
+          const vx = sPos.getX(i);
+          const vz = sPos.getZ(i);
+          const vy = heightReal(vx, vz) - 0.1;
+          sPos.setY(i, vy);
+          const shade = 0.2;
+          sColors.push(shade * 0.9, shade * 0.92, shade);
+        }
+        skirt.setAttribute('color', new THREE.Float32BufferAttribute(sColors, 3));
+        skirt.computeVertexNormals();
+        const skirtMat = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.96, metalness: 0.04 });
+        terrenoSkirt = new THREE.Mesh(skirt, skirtMat);
+        terrenoSkirt.name = "TERRENO SKIRT 50KM";
+        fpvScene.add(terrenoSkirt);
+      } else {
+        // (D) Global 50x50 km procedural (fallback file://)
+        const gPlane = new THREE.PlaneGeometry(50000, 50000, 220, 220);
+        gPlane.rotateX(-Math.PI / 2);
+        const gPos = gPlane.attributes.position;
+        const gColors = [];
+        for (let i = 0; i < gPos.count; i++) {
+          const vx = gPos.getX(i);
+          const vz = gPos.getZ(i);
+          const vy = getLunarTerrainHeight(vx, vz) - 0.06;
+          gPos.setY(i, vy);
+          const shade = 0.26 + Math.min(0.22, Math.max(-0.1, vy * 0.03));
+          gColors.push(shade * 0.92, shade * 0.95, shade);
+        }
+        gPlane.setAttribute('color', new THREE.Float32BufferAttribute(gColors, 3));
+        gPlane.computeVertexNormals();
+        const gMat = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.95, metalness: 0.05 });
+        terrenoGlobal = new THREE.Mesh(gPlane, gMat);
+        terrenoGlobal.name = "TERRENO GLOBAL 50KM";
+        fpvScene.add(terrenoGlobal);
+      }
+    }
+
+    async function loadDEM() {
+      try {
+        // Rutas: primero la API del servidor Python (local); si no existe
+        // (alojamiento estático tipo GoDaddy), usa los archivos estáticos.
+        const metas = ['/api/dem_meta', 'datos_reales/terreno_meta.json'];
+        const bins = ['/api/dem', 'datos_reales/terreno_real_shackleton.bin'];
+      let meta = null, buf = null;
+      for (const u of metas) {
+        try {
+          const r = await fetch(u, { cache: 'no-cache' });
+          if (!r.ok) continue;
+          const m = await r.json();
+          if (m && m.width && typeof m.z_min === 'number' && typeof m.z_max === 'number') { meta = m; break; }
+        } catch (e) { /* siguiente ruta */ }
+      }
+      if (!meta) throw new Error('metadatos DEM no disponibles');
+      for (const u of bins) {
+        try {
+          const r = await fetch(u, { cache: 'no-cache' });
+          if (!r.ok) continue;
+          const b = await r.arrayBuffer();
+          if (b.byteLength >= DEM_GRID * DEM_GRID * 2) { buf = b; break; }
+        } catch (e) { /* siguiente ruta */ }
+      }
+      if (!buf) throw new Error('binario DEM no disponible');
+      if (buf.byteLength < DEM_GRID * DEM_GRID * 2) throw new Error('DEM truncado (' + buf.byteLength + ' bytes)');
+      demMeta = meta;
+      demData = new Int16Array(buf, 0, DEM_GRID * DEM_GRID);
+      state.demLoaded = true;
+      state.demMeta = meta;
+      window.demData = demData;
+      window.demMeta = demMeta;
+      const ppm = meta.pixel_scale_m || (DEM_WINDOW_M / DEM_GRID);
+      addSysLog('✅ TERRENO REAL LRO/LOLA cargado (' + (meta.site || 'Site04 Shackleton rim') + ', ' + ppm.toFixed(1) + ' m/px, ' + meta.z_min.toFixed(0) + '..' + meta.z_max.toFixed(0) + ' m).');
+      rebuildTerrainMeshes();
+      repositionRocksOnTerrain();
+      placeCraterRimBoulders();
+      updateTerrainBadge();
+      updateAltitudeReadout();
+      } catch (err) {
+        demData = null; demMeta = null; state.demLoaded = false;
+        addSysLog('TERRENO: SIMULADO (sin datos LOLA). ' + (err && err.message ? err.message : ''));
+        updateTerrainBadge();
+      }
+    }
+
+    function updateTerrainBadge() {
+      const el = document.getElementById('terrain-badge');
+      if (!el) return;
+      if (demData && demMeta) {
+        const ppm = demMeta.pixel_scale_m || (DEM_WINDOW_M / DEM_GRID);
+        el.textContent = 'REAL: LOLA ' + (demMeta.site || 'Site04 Shackleton rim') + ' (' + ppm.toFixed(0) + ' m/px)';
+        el.className = 'text-hud-green font-bold text-[8px] leading-tight';
+      } else {
+        el.textContent = 'SIMULADO';
+        el.className = 'text-hud-yellow font-bold text-[8px] leading-tight';
+      }
+    }
+
+    function repositionRocksOnTerrain() {
+      for (let i = 0; i < lunarRocks.length; i++) {
+        const rk = lunarRocks[i];
+        rk.position.y = getLunarTerrainHeight(rk.position.x, rk.position.z) + rk.userData.radius * 0.4;
+      }
+      for (let i = 0; i < psrZoneMeshes.length; i++) {
+        const z = psrZoneMeshes[i];
+        z.position.y = getLunarTerrainHeight(z.position.x, z.position.z) + 0.25;
+      }
+      if (waypointBeacon) {
+        const wp = state.waypoints[state.activeWaypointIdx];
+        waypointBeacon.position.set(wp.x, getLunarTerrainHeight(wp.x, wp.z) + 22, wp.z);
+      }
+    }
+
+    function placeCraterRimBoulders() {
+      if (!demData || !demMeta) return;
+      const rockGeo = new THREE.DodecahedronGeometry(1, 1);
+      let placed = 0;
+      for (let n = 0; n < 6; n++) {
+        for (let attempt = 0; attempt < 40; attempt++) {
+          const rx = (Math.random() - 0.5) * 4000;
+          const rz = (Math.random() - 0.5) * 4000;
+          if (terrainSlopeDeg(rx, rz) > 18) {
+            const scale = 0.8 + Math.random() * 2.0;
+            const ry = getLunarTerrainHeight(rx, rz) + scale * 0.4;
+            const rockMat = new THREE.MeshStandardMaterial({ color: 0x6a727d, roughness: 0.95, metalness: 0.15 });
+            const rock = new THREE.Mesh(rockGeo, rockMat);
+            rock.position.set(rx, ry, rz);
+            rock.scale.set(scale, scale * 0.75, scale);
+            rock.name = 'BLOQUE CRÁTER #' + (placed + 1);
+            rock.userData = { isObstacle: true, radius: scale, id: 900 + placed };
+            fpvScene.add(rock);
+            lunarRocks.push(rock);
+            placed++;
+            break;
+          }
+        }
+      }
+      if (placed > 0) addSysLog('🪨 ' + placed + ' bloques colocados en laderas del borde de cráter (pendiente >18°).');
+    }
+
+    function updateAltitudeReadout() {
+      const el = document.getElementById('astronaut-alt');
+      if (!el) return;
+      const h = getLunarTerrainHeight(state.posX, state.posZ);
+      el.innerText = h.toFixed(1) + ' m' + (demData && demMeta ? ' LRO' : '');
+    }
+
+    // ============================================================
+    // (2) CORREDOR 2 FLECHAS + A* METABÓLICO (3D)
+    // ============================================================
+    const ASTAR_GW = 21, ASTAR_GH = 15, ASTAR_CELL = 1.2;
+    let corridorIsWarning = false;
+
+    function cellToWorld(c, r, headingRad) {
+      const fwd = r * ASTAR_CELL;
+      const lat = (c - (ASTAR_GW - 1) / 2) * ASTAR_CELL;
+      return {
+        x: state.posX + Math.sin(headingRad) * fwd + Math.cos(headingRad) * lat,
+        z: state.posZ - Math.cos(headingRad) * fwd + Math.sin(headingRad) * lat
+      };
+    }
+
+    function aStarCellCost(c, r, headingRad) {
+      const w = cellToWorld(c, r, headingRad);
+      let cost = 1.0 + 0.35 * Math.max(0, terrainSlopeDeg(w.x, w.z));
+      for (let i = 0; i < lunarRocks.length; i++) {
+        const rk = lunarRocks[i];
+        if (Math.hypot(rk.position.x - w.x, rk.position.z - w.z) < rk.userData.radius + 0.6) { cost += 8.0; break; }
+      }
+      return cost;
+    }
+
+    function astarHeuristic(c, r, gc, gr) {
+      const dc = Math.abs(c - gc), dr = Math.abs(r - gr);
+      return (dc + dr) + (Math.SQRT2 - 2) * Math.min(dc, dr);
+    }
+
+    function astarDirectCost(c0, r0, c1, r1, costs) {
+      let c = c0, r = r0, total = 0, guard = 0;
+      const sq2 = Math.SQRT2;
+      while ((c !== c1 || r !== r1) && guard++ < ASTAR_GW * ASTAR_GH) {
+        let bc = c, br = r, best = Infinity;
+        for (let dr = -1; dr <= 1; dr++) for (let dc = -1; dc <= 1; dc++) {
+          if (dr === 0 && dc === 0) continue;
+          const nc = c + dc, nr = r + dr;
+          if (nc < 0 || nc >= ASTAR_GW || nr < 0 || nr >= ASTAR_GH) continue;
+          const d = Math.hypot(nc - c1, nr - r1);
+          if (d < best) { best = d; bc = nc; br = nr; }
+        }
+        const diag = (bc !== c && br !== r);
+        total += (diag ? sq2 : 1) * costs[br * ASTAR_GW + bc];
+        c = bc; r = br;
+      }
+      return total;
+    }
+
+    function runAstar() {
+      const headingRad = state.heading * Math.PI / 180;
+      const wp = state.waypoints[state.activeWaypointIdx];
+      const dx = wp.x - state.posX, dz = wp.z - state.posZ;
+      const u = dx * Math.sin(headingRad) - dz * Math.cos(headingRad);
+      const v = dx * Math.cos(headingRad) + dz * Math.sin(headingRad);
+      const goalR = clamp(Math.round(u / ASTAR_CELL), 0, ASTAR_GH - 1);
+      const goalC = clamp(Math.round((ASTAR_GW - 1) / 2 + v / ASTAR_CELL), 0, ASTAR_GW - 1);
+      const startC = (ASTAR_GW - 1) / 2, startR = 0;
+      const startKey = startR * ASTAR_GW + startC, goalKey = goalR * ASTAR_GW + goalC;
+
+      const costs = new Float32Array(ASTAR_GW * ASTAR_GH);
+      for (let r = 0; r < ASTAR_GH; r++) for (let c = 0; c < ASTAR_GW; c++) costs[r * ASTAR_GW + c] = aStarCellCost(c, r, headingRad);
+
+      if (startKey === goalKey) return { path: [[startC, startR]], costAstar: costs[startKey], costDirect: costs[startKey] };
+
+      const gScore = new Float32Array(ASTAR_GW * ASTAR_GH).fill(Infinity);
+      const cameFrom = new Int32Array(ASTAR_GW * ASTAR_GH).fill(-1);
+      const closed = new Uint8Array(ASTAR_GW * ASTAR_GH);
+      const heap = new MinHeap();
+      gScore[startKey] = 0;
+      heap.push([astarHeuristic(startC, startR, goalC, goalR), startKey]);
+
+      const sq2 = Math.SQRT2;
+      let found = false;
+      while (!heap.empty()) {
+        const top = heap.pop();
+        const key = top[1];
+        const c = key % ASTAR_GW, rr = (key / ASTAR_GW) | 0;
+        if (closed[key]) continue;
+        closed[key] = 1;
+        if (key === goalKey) { found = true; break; }
+        for (let dr = -1; dr <= 1; dr++) {
+          for (let dc = -1; dc <= 1; dc++) {
+            if (dr === 0 && dc === 0) continue;
+            const nc = c + dc, nr = rr + dr;
+            if (nc < 0 || nc >= ASTAR_GW || nr < 0 || nr >= ASTAR_GH) continue;
+            const nkey = nr * ASTAR_GW + nc;
+            if (closed[nkey]) continue;
+            const diag = (dr !== 0 && dc !== 0);
+            const step = (diag ? sq2 : 1) * costs[nkey];
+            const tentative = gScore[key] + step;
+            if (tentative < gScore[nkey]) {
+              gScore[nkey] = tentative;
+              cameFrom[nkey] = key;
+              heap.push([tentative + astarHeuristic(nc, nr, goalC, goalR), nkey]);
+            }
+          }
+        }
+      }
+      if (!found) return { path: null, costAstar: 0, costDirect: 0 };
+
+      const path = [];
+      let k = goalKey;
+      while (k !== -1) {
+        path.push([k % ASTAR_GW, (k / ASTAR_GW) | 0]);
+        if (k === startKey) break;
+        k = cameFrom[k];
+      }
+      path.reverse();
+      const costDirect = astarDirectCost(startC, startR, goalC, goalR, costs);
+      return { path, costAstar: gScore[goalKey], costDirect };
+    }
+
+    function computeCorridor() {
+      const wp = state.waypoints[state.activeWaypointIdx];
+      const dx = wp.x - state.posX, dz = wp.z - state.posZ;
+      const distGoal = Math.hypot(dx, dz);
+      const lookRad = state.heading * Math.PI / 180;
+      const targetRad = Math.atan2(dx, -dz);
+      let headingErr = targetRad - lookRad;
+      while (headingErr > Math.PI) headingErr -= Math.PI * 2;
+      while (headingErr < -Math.PI) headingErr += Math.PI * 2;
+      const absErrDeg = Math.abs(headingErr * 180 / Math.PI);
+      const corridorLen = Math.min(Math.max(distGoal, 4.5), 12.0);
+
+      const astar = runAstar();
+      let p1x, p1z;
+      if (astar && astar.path && astar.path.length > 2) {
+        const mid = astar.path[Math.floor(astar.path.length * 0.45)];
+        const wmid = cellToWorld(mid[0], mid[1], lookRad);
+        p1x = wmid.x; p1z = wmid.z;
+      } else {
+        p1x = state.posX + Math.sin(lookRad) * corridorLen * 0.42;
+        p1z = state.posZ - Math.cos(lookRad) * corridorLen * 0.42;
+      }
+
+      if (astar && astar.costDirect > 0) {
+        state.o2SavedTarget = clamp((astar.costDirect - astar.costAstar) / astar.costDirect * 100, 0, 25);
+      } else {
+        state.o2SavedTarget = 0;
+      }
+
+      const p0 = { x: state.posX + Math.sin(lookRad) * 1.3, z: state.posZ - Math.cos(lookRad) * 1.3 };
+      const clampedTurn = clamp(headingErr, -1.15, 1.15);
+      const goalDir = lookRad + clampedTurn;
+      const p2 = { x: state.posX + Math.sin(goalDir) * corridorLen, z: state.posZ - Math.cos(goalDir) * corridorLen };
+
+      const isHazard = state.rockInPathDist < 2.6;
+      const isWarning = absErrDeg > 12 || isHazard;
+      const isCritical = absErrDeg > 32 || isHazard;
+
+      return { p0, p1: { x: p1x, z: p1z }, p2, absErrDeg, headingErr, distGoal, isWarning, isCritical, corridorLen };
+    }
+
+    function buildCorridor3D(corr) {
+      if (corridorGroup) {
+        fpvScene.remove(corridorGroup);
+        corridorGroup.traverse((o) => { if (o.geometry) o.geometry.dispose(); if (o.material) o.material.dispose(); });
+        corridorGroup = null;
+      }
+      corridorGroup = new THREE.Group();
+      corridorGroup.name = "CORREDOR_A_STAR";
+      fpvScene.add(corridorGroup);
+
+      const steps = 22;
+      const p0 = corr.p0, p1 = corr.p1, p2 = corr.p2;
+      corridorBezier = { p0: { x: p0.x, z: p0.z }, p1: { x: p1.x, z: p1.z }, p2: { x: p2.x, z: p2.z } };
+      corridorChevrons = [];
+
+      for (let lane = 0; lane < 2; lane++) {
+        const laneOffset = lane === 0 ? -0.52 : 0.52;
+        const positions = [];
+        const colors = [];
+        for (let i = 0; i <= steps; i++) {
+          const t = i / steps, inv = 1 - t;
+          const bx = inv * inv * p0.x + 2 * inv * t * p1.x + t * t * p2.x;
+          const bz = inv * inv * p0.z + 2 * inv * t * p1.z + t * t * p2.z;
+          const tx = 2 * inv * (p1.x - p0.x) + 2 * t * (p2.x - p1.x);
+          const tz = 2 * inv * (p1.z - p0.z) + 2 * t * (p2.z - p1.z);
+          const tangent = Math.atan2(tx, -tz);
+          const perp = tangent + Math.PI * 0.5;
+          const curLane = laneOffset * (1 - t * 0.26);
+          const ccx = bx + Math.sin(perp) * curLane;
+          const ccz = bz - Math.cos(perp) * curLane;
+          const cy = getLunarTerrainHeight(ccx, ccz) + 0.35;
+          positions.push(ccx, cy, ccz);
+          let r, g, b;
+          if (state.failsafe) { r = 0.1; g = 0.75; b = 0.25; }
+          else if (corr.isCritical || corr.isWarning) { r = 1.0; g = 0.72 * (1 - t * 0.78); b = 0.24 * (1 - t); }
+          else { r = 1.0 * (1 - t * 0.85); g = 0.72 + t * 0.22; b = 0.29 + t * 0.71; }
+          colors.push(r, g, b);
+        }
+        const geo = new THREE.BufferGeometry();
+        geo.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+        geo.setAttribute('color', new THREE.Float32BufferAttribute(colors, 3));
+        const mat = new THREE.LineBasicMaterial({ vertexColors: true, transparent: true, opacity: 0.9 });
+        const line = new THREE.Line(geo, mat);
+        line.name = 'corridor_lane_' + lane;
+        corridorGroup.add(line);
+      }
+
+      for (let c = 0; c < 3; c++) {
+        const g = new THREE.BufferGeometry();
+        g.setAttribute('position', new THREE.Float32BufferAttribute([0.45, 0, 0, -0.3, 0, 0.24, -0.3, 0, -0.24], 3));
+        const m = new THREE.MeshBasicMaterial({ color: state.failsafe ? 0x00ff66 : 0x00f0ff, side: THREE.DoubleSide, transparent: true, opacity: 0.9 });
+        const mesh = new THREE.Mesh(g, m);
+        mesh.name = 'corridor_chevron_' + c;
+        corridorGroup.add(mesh);
+        corridorChevrons.push(mesh);
+      }
+    }
+
+    function animateCorridorChevrons() {
+      requestAnimationFrame(animateCorridorChevrons);
+      if (!corridorBezier || !corridorGroup || !fpvScene) return;
+      const now = performance.now() * 0.001;
+      const p0 = corridorBezier.p0, p1 = corridorBezier.p1, p2 = corridorBezier.p2;
+      const bases = [0.10, 0.24, 0.38];
+      for (let i = 0; i < corridorChevrons.length; i++) {
+        const ch = corridorChevrons[i];
+        const t = fmod(bases[i] + now * 0.18, 1.0);
+        const inv = 1 - t;
+        const bx = inv * inv * p0.x + 2 * inv * t * p1.x + t * t * p2.x;
+        const bz = inv * inv * p0.z + 2 * inv * t * p1.z + t * t * p2.z;
+        const tx = 2 * inv * (p1.x - p0.x) + 2 * t * (p2.x - p1.x);
+        const tz = 2 * inv * (p1.z - p0.z) + 2 * t * (p2.z - p1.z);
+        const tangent = Math.atan2(tx, -tz);
+        const y = getLunarTerrainHeight(bx, bz) + 0.38;
+        ch.position.set(bx, y, bz);
+        ch.rotation.y = Math.PI / 2 - tangent;
+        if (ch.material) ch.material.color.setHex(state.failsafe ? 0x00ff66 : (corridorIsWarning ? 0xff5533 : 0x00f0ff));
+      }
+    }
+
+    function updateRockInPath() {
+      const lookRad = state.heading * Math.PI / 180;
+      let best = 99;
+      for (let i = 0; i < lunarRocks.length; i++) {
+        const rk = lunarRocks[i];
+        const dx = rk.position.x - state.posX, dz = rk.position.z - state.posZ;
+        const lateral = Math.abs(dx * Math.cos(lookRad) + dz * Math.sin(lookRad));
+        const fwd = dx * Math.sin(lookRad) - dz * Math.cos(lookRad);
+        if (fwd > 0 && fwd < 20 && lateral < rk.userData.radius + 0.7) {
+          const dd = Math.hypot(dx, dz);
+          if (dd < best) best = dd;
+        }
+      }
+      state.rockInPathDist = best;
+    }
+
+    function updateWalkback() {
+      const lander = state.waypoints[0];
+      const dist = Math.hypot(state.posX - lander.x, state.posZ - lander.z);
+      state.walkbackO2 = Math.min(85, Math.round(dist / 12 + 4));
+    }
+
+    // ============================================================
+    // (3) C&W CLASES 1/2/3 + FAIL-SAFE M
+    // ============================================================
+    function classifyCW() {
+      const rockEm = state.rockInPathDist < 2.2;
+      const battEm = state.battery_pct < 15;
+      const radEm = state.radiation_uSv > 250;
+      const walkbackWarn = state.walkbackO2 > 45;
+      const devWarn = state.lastCorridorAbsErrDeg > 12;
+
+      let cls, msg;
+      if (rockEm || battEm || radEm) {
+        const parts = [];
+        if (rockEm) parts.push('ROCA A ' + state.rockInPathDist.toFixed(1) + 'm');
+        if (battEm) parts.push('BATERÍA ' + state.battery_pct.toFixed(0) + '%');
+        if (radEm) parts.push('RADIACIÓN SPE');
+        cls = 1;
+        msg = 'CLASE 1 EMERGENCIA: ' + parts.join(' · ');
+      } else if (devWarn || walkbackWarn) {
+        cls = 2;
+        msg = 'CLASE 2 PRECAUCIÓN: ' + (devWarn ? 'DESVÍO ' + state.lastCorridorAbsErrDeg.toFixed(0) + '°' : '') + (walkbackWarn ? ' O2 RETORNO' : '');
+      } else {
+        cls = 3;
+        msg = 'CLASE 3 NOMINAL: A* ÓPTIMO (-' + state.o2SavedPct.toFixed(1) + '% O2) · ' + state.commMode;
+      }
+      state.cwClass = cls;
+      state.cwMessage = msg;
+      const banner = document.getElementById('cw-banner');
+      const title = document.getElementById('cw-title');
+      if (banner && title) {
+        banner.classList.remove('c1', 'c2', 'c3');
+        banner.classList.add(cls === 1 ? 'c1' : cls === 2 ? 'c2' : 'c3');
+        title.textContent = msg;
+      }
+    }
+
+    function setFailsafe(on, auto) {
+      if (on === state.failsafe) return;
+      state.failsafe = on;
+      state.failsafeAuto = !!auto;
+      if (!on) state.failSafeSince = 0; // reiniciar temporizador de emergencia sostenida al salir
+      document.body.classList.toggle('failsafe', on);
+      const fsOverlay = document.getElementById('hud-root-failsafe');
+      if (fsOverlay) fsOverlay.classList.toggle('on', on);
+      const pip = document.getElementById('pip-panel');
+      if (pip) pip.classList.toggle('hidden', on ? true : !state.pipVisible);
+      const wrist = document.getElementById('wrist-dock');
+      if (wrist) wrist.classList.toggle('failsafe-hidden', on);
+      postEsp32();
+      if (on) {
+        playSuitBeep(220, 0.4);
+        addSysLog('⚠ MODO FAIL-SAFE — CONSUMO MÍNIMO (batería/radiación/CW1)');
+      } else {
+        addSysLog('Modo nominal restaurado.');
+      }
+    }
+
+    function toggleFailsafe() { setFailsafe(!state.failsafe, false); }
+
+    function updateFailsafeAuto() {
+      const now = performance.now();
+      const battLow = state.battery_pct < 15;
+      const radHigh = state.radiation_uSv > 250;
+      const cw1 = state.cwClass === 1;
+      if (battLow) {
+        if (!state.failsafe) setFailsafe(true, true);
+        return;
+      }
+      if (radHigh || cw1) {
+        if (!state.failSafeSince) state.failSafeSince = now;
+        if (now - state.failSafeSince >= 5000 && !state.failsafe) setFailsafe(true, true);
+      } else {
+        state.failSafeSince = 0;
+        if (state.failsafeAuto && state.failsafe && state.battery_pct >= 15 && state.radiation_uSv <= 230 && state.cwClass !== 1) {
+          setFailsafe(false, false);
+        }
+      }
+    }
+
+    // ============================================================
+    // (4) TIERRA REAL EN EL CIELO + OCULTACIÓN
+    // ============================================================
+    function makeEarthTexture() {
+      const c = document.createElement('canvas');
+      c.width = 256; c.height = 128;
+      const ctx = c.getContext('2d');
+      ctx.fillStyle = '#0a3d91';
+      ctx.fillRect(0, 0, 256, 128);
+      ctx.fillStyle = '#2f7a3d';
+      ctx.beginPath(); ctx.ellipse(60, 45, 40, 22, 0, 0, Math.PI * 2); ctx.fill();
+      ctx.beginPath(); ctx.ellipse(170, 60, 34, 26, 0.3, 0, Math.PI * 2); ctx.fill();
+      ctx.beginPath(); ctx.ellipse(120, 95, 30, 18, -0.2, 0, Math.PI * 2); ctx.fill();
+      ctx.beginPath(); ctx.ellipse(220, 30, 24, 14, 0.5, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = '#b98a4a';
+      ctx.beginPath(); ctx.ellipse(140, 40, 20, 10, 0.2, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = '#e8f4ff';
+      ctx.fillRect(0, 0, 256, 8);
+      ctx.fillRect(0, 120, 256, 8);
+      const tex = new THREE.CanvasTexture(c);
+      tex.wrapS = THREE.RepeatWrapping;
+      return tex;
+    }
+
+    async function fetchEarthHorizons() {
+      // Tierra REAL desde 89.9°S. En hosting estático (Cloudflare Pages) no hay
+      // /api/horizons: probamos directo a NASA y luego un relay CORS.
+      const baseEarth = "https://ssd.jpl.nasa.gov/api/horizons.api?format=text" +
+        "&COMMAND='399'&OBJ_DATA='NO'&MAKE_EPHEM='YES'&EPHEM_TYPE='OBSERVER'" +
+        "&CENTER='coord@301'&COORD_TYPE='GEODETIC'" +
+        "&SITE_COORD='-89.9,0.0,0'" +
+        "&START_TIME='" + new Date().toISOString().substring(0, 13) + ":00'" +
+        "&STOP_TIME='" + new Date(Date.now() + 3600000).toISOString().substring(0, 13) + ":00'" +
+        "&STEP_SIZE='30m'&QUANTITIES='4'";
+      const attempts = [
+        '/api/horizons?site=shackleton&body=earth',                       // proxy Python (local)
+        "https://startroot-horizons.ferming1541.workers.dev/api/horizons.api?" + baseEarth.split('?')[1],  // Worker Cloudflare propio
+        baseEarth,                                                        // directo a NASA
+        "https://api.allorigins.win/raw?url=" + encodeURIComponent(baseEarth)  // relay CORS
+      ];
+      for (const url of attempts) {
+        try {
+          const ctrl = new AbortController();
+          const timer = setTimeout(() => ctrl.abort(), 15000);
+          const res = await fetch(url, { signal: ctrl.signal });
+          clearTimeout(timer);
+          if (!res.ok) continue;
+          let az = null, el = null, real = false;
+          if (url.startsWith('/api')) {
+            const j = await res.json();
+            if (j && typeof j.el === 'number' && typeof j.az === 'number') {
+              az = j.az; el = j.el;
+              real = !!(j.source && j.source.indexOf('REAL') !== -1);
+            }
+          } else {
+            const p = parseHorizonsAZEL(await res.text());
+            if (p) { az = p.az; el = p.el; real = true; }
+          }
+          if (az !== null && el !== null) {
+            state.earthAz = az; state.earthEl = el;
+            state.earthSource = real ? 'REAL' : 'SIM';
+            applyEarthState();
+            return;
+          }
+        } catch (err) { /* siguiente intento */ }
+      }
+      state.earthSource = 'SIM';
+      const simEl = Math.sin(performance.now() * 0.0004) * 30;
+      state.earthEl = simEl; state.earthAz = 180;
+      applyEarthState();
+    }
+
+    function applyEarthState() {
+      const occluded = !(state.earthEl > 0);
+      state.earthOccluded = occluded;
+      const prev = state.commMode;
+      state.commMode = occluded ? 'GATEWAY (relé)' : 'DTE TIERRA';
+      if (state.commMode !== prev) {
+        playSuitBeep(660, 0.18);
+        addSysLog(occluded ? 'Tierra oculta — conmutando a Lunar Gateway' : 'Tierra visible — restaurando DTE Tierra');
+      }
+      updateCommLabel();
+      positionEarth();
+    }
+
+    function positionEarth() {
+      if (!earthGroup) return;
+      if (!(state.earthEl > 0)) { earthGroup.visible = false; return; }
+      earthGroup.visible = true;
+      const D = 500;
+      const a = state.earthAz * Math.PI / 180, e = state.earthEl * Math.PI / 180;
+      const dirX = Math.sin(a) * Math.cos(e), dirY = Math.sin(e), dirZ = -Math.cos(a) * Math.cos(e);
+      const baseY = getLunarTerrainHeight(state.posX, state.posZ) + 1.8;
+      earthGroup.position.set(state.posX + dirX * D, baseY + dirY * D, state.posZ + dirZ * D);
+    }
+
+    function updateCommLabel() {
+      const el = document.getElementById('comm-mode-label');
+      if (!el) return;
+      const suffix = state.earthSource === 'REAL' ? '' : ' (SIM)';
+      el.textContent = state.commMode + suffix;
+      el.className = state.earthOccluded ? 'text-hud-yellow font-bold' : 'text-hud-green font-bold';
+    }
+
+    // ============================================================
+    // (5) PUENTE ESP32 BIDIRECCIONAL
+    // ============================================================
+    function postEsp32() {
+      if (!state.serverApi) return;  // modo estático: sin puente local, silencio total
+      const alert = state.cwClass === 1 ? 1 : (state.cwClass === 2 ? 2 : 0);
+      const turn = state.lastHeadingErr > 0.25 ? 'R' : (state.lastHeadingErr < -0.25 ? 'L' : 'C');
+      const payload = { alert: alert, turn: turn, failsafe: state.failsafe ? 1 : 0 };
+      fetch('/api/esp32', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      }).catch(() => { /* sin servidor: silencioso */ });
+    }
+
+    function getEsp32() {
+      if (!state.serverApi) { state.espConnected = false; updateEsp32Dom(); return; }  // modo estático
+      fetch('/api/esp32')
+        .then((r) => { if (!r.ok) throw new Error('sin placa'); return r.json(); })
+        .then((d) => {
+          if (d && d.connected) {
+            state.espConnected = true;
+            state.espPort = d.port || 'COM3';
+            state.espLastUplink = Date.now();
+            const u = d.last_uplink;
+            if (u && typeof u === 'object') {
+              if (u.lidar !== undefined) state.espLidar = u.lidar;
+              if (u.ultra !== undefined) state.espUltra = u.ultra;
+              if (u.temp !== undefined) state.espTemp = u.temp;
+            }
+          } else {
+            state.espConnected = false;
+          }
+          updateEsp32Dom();
+        })
+        .catch(() => { state.espConnected = false; updateEsp32Dom(); });
+    }
+
+    function updateEsp32Dom() {
+      const chip = document.getElementById('esp32-chip');
+      if (chip) {
+        chip.textContent = state.espConnected ? ('ESP32: ' + (state.espPort || 'COM3') + ' ✓') : 'ESP32: SIN PLACA';
+        chip.className = state.espConnected ? 'text-hud-green whitespace-nowrap' : 'text-slate-300 whitespace-nowrap';
+      }
+      const wrow = document.getElementById('w-esp32-row');
+      if (wrow) {
+        wrow.textContent = (state.espConnected && state.espLastUplink)
+          ? ('ESP32 USB: lidar ' + fmt(state.espLidar) + 'm · ultra ' + fmt(state.espUltra) + 'm · temp ' + fmt(state.espTemp) + '°C')
+          : 'ESP32 USB: —';
+      }
+    }
+
+    // ============================================================
+    // (6) PANTALLA TÁCTICA DE MUÑECA (TAB + click)
+    // ============================================================
+    function toggleWrist() {
+      state.wristRaised = !state.wristRaised;
+      const dock = document.getElementById('wrist-dock');
+      if (dock) dock.classList.toggle('raised', state.wristRaised);
+      const btn = document.getElementById('wrist-toggle');
+      if (btn) btn.textContent = state.wristRaised ? '▼ BAJAR (TAB)' : '▲ PANTALLA DE MUÑECA (TAB)';
+    }
+
+    function selectWristTab(i) {
+      state.wristTab = i;
+      const dock = document.getElementById('wrist-dock');
+      if (dock) dock.classList.add('raised');
+      state.wristRaised = true;
+      const btn = document.getElementById('wrist-toggle');
+      if (btn) btn.textContent = '▼ BAJAR (TAB)';
+      const tabs = document.querySelectorAll('#wrist-tabs button');
+      const panels = document.querySelectorAll('#wrist-body .wtab');
+      for (let t = 0; t < tabs.length; t++) tabs[t].classList.toggle('active', t === i);
+      for (let p = 0; p < panels.length; p++) panels[p].classList.toggle('active', parseInt(panels[p].getAttribute('data-panel'), 10) === i);
+    }
+
+    function toggleStorm() {
+      state.stormActive = !state.stormActive;
+      addSysLog(state.stormActive ? 'TORMENTA SOLAR: SPE en curso — radiación subiendo' : 'Tormenta solar disipada.');
+      const b = document.getElementById('btn-storm');
+      if (b) b.textContent = state.stormActive ? 'DETENER TORMENTA SOLAR' : 'TORMENTA SOLAR';
+    }
+
+    function selectWaypointFromWrist(i) {
+      changeActiveWaypoint(i);
+      const btns = document.querySelectorAll('#wp-list button');
+      for (let b = 0; b < btns.length; b++) btns[b].classList.toggle('sel', parseInt(btns[b].getAttribute('data-wp'), 10) === i);
+    }
+
+    function bindWristUI() {
+      const toggle = document.getElementById('wrist-toggle');
+      if (toggle) toggle.addEventListener('click', toggleWrist);
+      const tabs = document.querySelectorAll('#wrist-tabs button');
+      for (let i = 0; i < tabs.length; i++) {
+        (function (idx) { tabs[idx].addEventListener('click', function () { selectWristTab(idx); }); })(i);
+      }
+      const wps = document.querySelectorAll('#wp-list button');
+      for (let i = 0; i < wps.length; i++) {
+        (function (idx) {
+          wps[idx].addEventListener('click', function () { selectWaypointFromWrist(idx); });
+        })(i);
+      }
+      const storm = document.getElementById('btn-storm');
+      if (storm) storm.addEventListener('click', toggleStorm);
+      const cam = document.getElementById('btn-camara-wrist');
+      if (cam) cam.addEventListener('click', function () { toggleRealCamera(); });
+    }
+
+    function setWristGauge(id, val, unit, pct) {
+      const v = document.getElementById('wv-' + id);
+      const b = document.getElementById('wb-' + id);
+      if (v) v.textContent = fmt(val) + unit;
+      if (b) b.style.width = (clamp(pct, 0, 1) * 100).toFixed(0) + '%';
+    }
+
+    function setWristInfo(id, text, cls) {
+      const el = document.getElementById(id);
+      if (!el) return;
+      const b = el.querySelector('b');
+      if (b) { b.textContent = text; if (cls) b.className = cls; }
+    }
+
+    function updateWrist() {
+      if (!state.wristRaised) return;
+      const lidar = clamp(state.sensors[0] ? state.sensors[0].val : 12, 0, 25);
+      const prox = clamp(state.sensors[1] ? state.sensors[1].val : 4.1, 0, 10);
+      const ultra = state.espUltra !== null ? state.espUltra : 1.8;
+      const temp = state.espTemp !== null ? state.espTemp : -50.3;
+      const ir = temp + 3.4;
+      setWristGauge('lidar', lidar, ' m', lidar / 25);
+      setWristGauge('prox', prox, ' m', prox / 10);
+      setWristGauge('ultra', ultra, ' m', clamp(ultra / 5, 0, 1));
+      setWristGauge('temp', temp, '°C', clamp((temp + 200) / 250, 0, 1));
+      setWristGauge('ir', ir, '°C', clamp((ir + 200) / 250, 0, 1));
+
+      setWristInfo('w-astar-nav', 'ahorro O2 ' + state.o2SavedPct.toFixed(1) + '%');
+      setWristInfo('w-kcal-nav', state.kcalPerMin.toFixed(1) + ' kcal/min · ' + state.kcalBurned.toFixed(1) + ' kcal');
+      setWristInfo('w-walkback-nav', state.walkbackO2.toFixed(0) + '%', state.walkbackO2 > 45 ? 'bad' : 'ok');
+
+      setWristInfo('w-amb-temp', '-170.0 °C');
+      setWristInfo('w-amb-slope', terrainSlopeDeg(state.posX, state.posZ).toFixed(1) + '° REAL');
+      setWristInfo('w-amb-dust', state.visorDustLevel + '% OPACIDAD');
+      setWristInfo('w-amb-solar', state.solarElevation.toFixed(1) + '° (' + (state.solarSourceReal ? 'REAL' : 'SIM') + ')');
+      setWristInfo('w-amb-rad', state.radiation_uSv.toFixed(0) + ' µSv/h', state.radiation_uSv > 250 ? 'bad' : 'ok');
+      setWristInfo('w-amb-batt', state.battery_pct.toFixed(0) + '%', state.battery_pct < 15 ? 'bad' : 'ok');
+
+      const est = document.getElementById('w-esp-status');
+      if (est) {
+        const b = est.querySelector('b');
+        if (b) { b.textContent = state.espConnected ? ('CONECTADO ' + (state.espPort || 'COM3')) : 'SIN PLACA'; b.className = state.espConnected ? 'ok' : 'warn'; }
+      }
+      const wesp = document.getElementById('wrist-esp');
+      if (wesp) {
+        wesp.textContent = state.espConnected ? ('ESP32: ' + (state.espPort || 'COM3')) : 'ESP32: SIN PLACA';
+        wesp.className = state.espConnected ? 'on' : '';
+      }
+      const camBtn = document.getElementById('btn-camara-wrist');
+      if (camBtn) camBtn.textContent = state.cameraActive ? 'DESACTIVAR CÁMARA AR' : 'ACTIVAR CÁMARA AR';
+      const log = document.getElementById('wrist-log');
+      if (log) log.textContent = state.sysLogHistory.slice(-5).reverse().join('\n');
+    }
+
+    // ============================================================
+    // BUCLE TÁCTICO + VITALES (DOM)
+    // ============================================================
+    function updateVitalsDom() {
+      const o2el = document.getElementById('suit-o2');
+      if (o2el) o2el.innerText = state.suitO2Pct.toFixed(0) + '% · ' + (4.3 * state.suitO2Pct / 98).toFixed(1) + ' PSI';
+      const astar = document.getElementById('astar-chip');
+      if (astar) {
+        astar.textContent = 'A*: ahorro O2 ' + state.o2SavedPct.toFixed(1) + '% | ' + state.kcalPerMin.toFixed(1) + ' kcal/min | ' + state.kcalBurned.toFixed(1) + ' kcal';
+        astar.style.color = state.o2SavedTarget > 2 ? '#00ff66' : '#00f0ff';
+      }
+    }
+
+    function tacticalTick() {
+      const now = performance.now();
+      const lastMs = state._lastTacticalMs || now;
+      state._lastTacticalMs = now;
+      const dtSec = Math.min(2, (now - lastMs) / 1000); // tiempo real, robusto a throttling
+      const dtMin = dtSec / 60;
+
+      state.battery_pct = Math.max(0, Math.min(100, state.battery_pct - 0.05 * dtMin));
+      if (state.stormActive) state.radiation_uSv = Math.min(400, state.radiation_uSv + 60 * dtSec);
+      else state.radiation_uSv = Math.max(0, state.radiation_uSv - 25 * dtSec);
+
+      const speedMs = Math.abs(state.velForward) * 6.0;
+      if (Math.abs(state.velForward) > 0.005) state.suitO2Pct = Math.max(0, state.suitO2Pct - 0.52 * dtMin);
+      state.kcalPerMin = 6.0 + 0.9 * Math.abs(terrainSlopeDeg(state.posX, state.posZ)) + 2.0 * speedMs;
+      state.kcalBurned += state.kcalPerMin * dtMin;
+
+      updateRockInPath();
+      updateWalkback();
+
+      // error de rumbo (barato, cada tick)
+      const wp = state.waypoints[state.activeWaypointIdx];
+      const dx = wp.x - state.posX, dz = wp.z - state.posZ;
+      const lookRad = state.heading * Math.PI / 180;
+      const targetRad = Math.atan2(dx, -dz);
+      let headingErr = targetRad - lookRad;
+      while (headingErr > Math.PI) headingErr -= Math.PI * 2;
+      while (headingErr < -Math.PI) headingErr += Math.PI * 2;
+      const absErrDeg = Math.abs(headingErr * 180 / Math.PI);
+      state.lastCorridorAbsErrDeg = absErrDeg;
+      state.lastHeadingErr = headingErr;
+
+      // re-ruta A* cada 1.5 s o si error > 20°
+      if (now - state.lastRepathTs > 1500 || absErrDeg > 20) {
+        state.lastRepathTs = now;
+        const corr = computeCorridor();
+        corridorIsWarning = corr.isWarning || corr.isCritical;
+        buildCorridor3D(corr);
+      }
+      state.o2SavedPct += (state.o2SavedTarget - state.o2SavedPct) * 0.1;
+
+      classifyCW();
+      updateFailsafeAuto();
+
+      postEsp32();
+      if (now - state.lastEspRx > 1000) { state.lastEspRx = now; getEsp32(); }
+
+      if (now - state.lastEarthFetch > 60000) { state.lastEarthFetch = now; fetchEarthHorizons(); }
+
+      updateVitalsDom();
+      updateAltitudeReadout();
+      updateWrist();
+    }
+
+    function startTacticalSystems() {
+      state.lastRepathTs = 0;
+      state.lastEspRx = 0;
+      state.lastEarthFetch = performance.now();
+      setInterval(tacticalTick, 250);
+      requestAnimationFrame(animateCorridorChevrons);
+    }
+
+    window.addEventListener('keydown', (e) => {
+      if (e.key === 'Tab') { e.preventDefault(); toggleWrist(); return; }
+      if (e.key.toLowerCase() === 'm') { toggleFailsafe(); return; }
+    });
+
+    // ---- Exposición para verificación (solo lectura de estado) ----
+    window.state = state;
+    window.demData = null;
+    window.demMeta = null;
+    window.toggleFailsafe = toggleFailsafe;
+    window.toggleWrist = toggleWrist;
+    window.toggleStorm = toggleStorm;
+    window.toggleRealCamera = toggleRealCamera;
+    window.__viz = {
+      get scene() { return fpvScene; },
+      get terrain() { return fpvTerrain; },
+      get corridor() { return corridorGroup; },
+      get earth() { return earthGroup; },
+      get rocks() { return lunarRocks; },
+      get demLoaded() { return !!(demData && demMeta); }
+    };
+  </script>
+</body>
+</html>
