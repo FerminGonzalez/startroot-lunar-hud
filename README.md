@@ -55,7 +55,8 @@ Además: telémetro láser en retícula, cámara trasera 180°, pantalla táctic
 
 **👉 https://gestion2026.online** — abrir y caminar. Sin instalación, sin cuenta, sin backend.
 
-**Baraja de presentación (7 diapositivas, ES/EN con conmutador):** https://gestion2026.online/diapositivas.html
+**Baraja de presentación (7 diapositivas, bilingüe):** https://gestion2026.online/diapositivas.html
+Conmutador `ES · EN · ES+EN` arriba a la derecha (o tecla `L`): el modo **ES+EN** muestra las dos versiones **en columnas simultáneas**, español a la izquierda e inglés a la derecha, para un jurado internacional.
 
 | Tecla | Acción |
 |---|---|

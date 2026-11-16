@@ -1,27 +1,18 @@
 <!DOCTYPE html>
 <!--
   Presentación de 7 diapositivas (incluidas portada e introducción).
+  Bilingüe: cada diapositiva existe en español e inglés, en columnas paralelas.
+  Modos: ES · EN · ES+EN (ambas columnas a la vez).
   Maquetación y redacción asistidas por SI; SIN imágenes generadas por SI
   (la captura es real, tomada del visor en ejecución). Sin marcas de agencias.
 -->
-<html lang="es">
+<html lang="es" data-mode="es">
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <meta name="generator" content="Asistido por SI (LLM): redacción y maquetación; ver AI_USAGE.md" />
 <link rel="icon" href="data:," />
-<title>Visor Lunar — StartRoot · Presentación (7 diapositivas)</title>
-<script>
-(function () {
-  try {
-    var l = new URLSearchParams(location.search).get('lang');
-    if (l !== 'en' && l !== 'es') {
-      try { l = localStorage.getItem('visor_lunar_lang'); } catch (e) {}
-    }
-    if (l === 'en' || l === 'es') document.documentElement.setAttribute('lang', l);
-  } catch (e) {}
-})();
-</script>
+<title>Visor Lunar — StartRoot · Presentación bilingüe (7 diapositivas)</title>
 <style>
   :root { --bg:#05070d; --ink:#eaf2ff; --dim:#8fa3bf; --amber:#ffb300; --cyan:#00e5ff; --green:#39d98a; --red:#ff5252; --line:rgba(120,160,220,.22); }
   * { box-sizing:border-box; margin:0; padding:0; }
@@ -29,61 +20,88 @@
   body::before { content:""; position:fixed; inset:0; background:radial-gradient(ellipse at 78% 12%, rgba(0,229,255,.07), transparent 55%), radial-gradient(ellipse at 8% 90%, rgba(255,179,0,.06), transparent 50%); pointer-events:none; }
   .deck { position:relative; height:100%; display:flex; flex-direction:column; }
   .stage { position:relative; flex:1 1 auto; min-height:0; }
-  .slide { position:absolute; inset:0; display:none; }
+  .slide { position:absolute; inset:0; padding:5vh 7vw; display:none; }
   .slide.on { display:flex; align-items:center; justify-content:center; animation:in .45s ease both; }
-  @keyframes in { from { opacity:0; } to { opacity:1; } }
-  .slide-inner { padding:5vh 7vw; width:100%; transform-origin:center center; overflow-wrap:break-word; }
-  [data-i18n] { display:none; }
-  html[lang="es"] [data-i18n="es"] { display:contents; }
-  html[lang="en"] [data-i18n="en"] { display:contents; }
+  @keyframes in { from { opacity:0; transform:translateY(18px); } to { opacity:1; transform:none; } }
+
+  /* ---- auto-ajuste: la escala la calcula el JS ---- */
+  .slide-inner { width:100%; display:grid; gap:clamp(14px,2.2vw,40px); align-content:center; transform-origin:center center; }
+  html[data-mode="bi"] .slide-inner { grid-template-columns:1fr 1fr; }
+  html[data-mode="es"] .col[data-lang="en"] { display:none; }
+  html[data-mode="en"] .col[data-lang="es"] { display:none; }
+  .col { min-width:0; }
+  .wide { grid-column:1 / -1; }
+  html[data-mode="bi"] .col + .col { border-left:1px solid var(--line); padding-left:clamp(14px,2vw,34px); }
+
   .kicker { font:600 12px/1.2 ui-monospace,Consolas,monospace; letter-spacing:.32em; color:var(--cyan); text-transform:uppercase; margin-bottom:18px; }
-  .num { font:700 clamp(56px,11vw,130px)/.9 ui-monospace,Consolas,monospace; letter-spacing:-.06em; color:var(--amber); }
   h1 { font-size:clamp(40px,8.2vw,108px); line-height:.98; letter-spacing:-.045em; font-weight:800; }
   h1 em { font-style:normal; color:var(--cyan); }
-  h2 { font-size:clamp(30px,5.2vw,68px); line-height:1.03; letter-spacing:-.035em; font-weight:800; margin-bottom:22px; }
-  p.lead { font-size:clamp(17px,2.1vw,28px); line-height:1.5; color:var(--ink); max-width:62ch; }
-  p.sub { font-size:clamp(14px,1.5vw,19px); line-height:1.6; color:var(--dim); max-width:70ch; margin-top:14px; }
-  .tag { display:inline-block; font:600 12px/1 ui-monospace,Consolas,monospace; letter-spacing:.14em; color:var(--amber); border:1px solid var(--amber); padding:8px 12px; margin-top:26px; max-width:100%; white-space:normal; }
-  .grid3 { display:grid; grid-template-columns:repeat(3,1fr); gap:18px; margin-top:38px; }
-  .card { border:1px solid var(--line); border-left:3px solid var(--cyan); padding:22px; background:rgba(10,18,32,.55); }
-  .card b { display:block; font:700 clamp(26px,3.6vw,44px)/1 ui-monospace,Consolas,monospace; color:var(--cyan); margin-bottom:10px; }
-  .card span { font-size:15px; line-height:1.45; color:var(--dim); }
-  .split { display:grid; grid-template-columns:1.05fr .95fr; gap:34px; align-items:center; }
-  .split img { width:100%; border:1px solid var(--line); filter:saturate(1.1); }
+  h2 { font-size:clamp(26px,4.4vw,62px); line-height:1.04; letter-spacing:-.035em; font-weight:800; margin-bottom:20px; }
+  p.lead { font-size:clamp(15px,1.75vw,25px); line-height:1.5; color:var(--ink); max-width:60ch; }
+  p.sub { font-size:clamp(13px,1.3vw,18px); line-height:1.55; color:var(--dim); max-width:66ch; margin-top:12px; }
+  .tag { display:inline-block; font:600 12px/1 ui-monospace,Consolas,monospace; letter-spacing:.14em; color:var(--amber); border:1px solid var(--amber); padding:8px 12px; margin-top:22px; }
+  .grid3 { display:grid; grid-template-columns:repeat(3,1fr); gap:14px; margin-top:26px; }
+  .card { border:1px solid var(--line); border-left:3px solid var(--cyan); padding:18px; background:rgba(10,18,32,.55); }
+  .card b { display:block; font:700 clamp(22px,2.9vw,40px)/1 ui-monospace,Consolas,monospace; color:var(--cyan); margin-bottom:8px; }
+  .card span { font-size:13.5px; line-height:1.45; color:var(--dim); }
+  figure { margin:0; }
+  figure img { width:100%; max-height:min(34vh,320px); object-fit:cover; border:1px solid var(--line); filter:saturate(1.1); }
   figure figcaption { font:500 11px/1.4 ui-monospace,Consolas,monospace; color:var(--dim); margin-top:8px; letter-spacing:.06em; }
-  table { width:100%; border-collapse:collapse; margin-top:16px; font-size:clamp(12px,1.35vw,17px); }
-  td { border-bottom:1px solid var(--line); padding:11px 10px; vertical-align:top; }
-  td:first-child { color:var(--amber); font:700 15px ui-monospace,Consolas,monospace; width:52px; }
+  table { width:100%; border-collapse:collapse; margin-top:12px; font-size:clamp(11px,1.15vw,15px); }
+  td { border-bottom:1px solid var(--line); padding:9px 8px; vertical-align:top; }
+  td:first-child { color:var(--amber); font:700 14px ui-monospace,Consolas,monospace; width:48px; }
   td b { color:var(--ink); }
   td small { color:var(--dim); }
-  .chips { display:flex; flex-wrap:wrap; gap:10px; margin-top:26px; }
-  .chip { border:1px solid var(--line); padding:9px 13px; font:600 12px/1 ui-monospace,Consolas,monospace; letter-spacing:.05em; color:var(--green); }
-  .chip.warn { color:var(--amber); }
-  .cta { margin-top:32px; font:700 clamp(20px,3vw,40px)/1.3 ui-monospace,Consolas,monospace; color:var(--cyan); }
+  .chips { display:flex; flex-wrap:wrap; gap:8px; margin-top:20px; }
+  .chip { border:1px solid var(--line); padding:8px 12px; font:600 11px/1 ui-monospace,Consolas,monospace; letter-spacing:.05em; color:var(--green); }
+  .cta { margin-top:26px; font:700 clamp(17px,2.3vw,34px)/1.35 ui-monospace,Consolas,monospace; color:var(--cyan); }
   .cta a { color:var(--cyan); text-decoration:underline; text-underline-offset:4px; }
   .cta a:hover { color:var(--amber); }
   .cta a:focus-visible { outline:2px solid var(--cyan); outline-offset:3px; }
-  .cta small { display:block; font:500 14px/1.6 ui-monospace,Consolas,monospace; color:var(--dim); margin-top:12px; letter-spacing:.04em; }
+  .cta small { display:block; font:500 12.5px/1.6 ui-monospace,Consolas,monospace; color:var(--dim); margin-top:12px; letter-spacing:.04em; }
   .cta small a { color:var(--cyan); text-decoration:underline; text-underline-offset:3px; }
   .cta small a:hover { color:var(--amber); }
-  .cta small a:focus-visible { outline:2px solid var(--cyan); outline-offset:2px; }
+
+  /* ---- conmutador de idioma, bien visible ---- */
+  .langbar { position:fixed; top:14px; right:16px; z-index:40; display:flex; align-items:center; gap:6px; padding:6px; border:1px solid var(--line); background:rgba(6,12,22,.88); border-radius:12px; backdrop-filter:blur(6px); }
+  .langbar .lb { font:600 10px/1 ui-monospace,Consolas,monospace; letter-spacing:.16em; color:var(--dim); padding:0 6px; }
+  .langbar button { height:34px; padding:0 12px; border:1px solid var(--line); background:rgba(10,18,32,.8); color:var(--dim); font:700 12px/1 ui-monospace,Consolas,monospace; letter-spacing:.06em; cursor:pointer; border-radius:8px; transition:all .15s ease; }
+  .langbar button:hover:not([aria-pressed="true"]) { color:var(--ink); border-color:var(--cyan); }
+  .langbar button:focus-visible { outline:2px solid var(--cyan); outline-offset:2px; }
+  .langbar button[aria-pressed="true"] { color:#04121a; background:var(--cyan); border-color:var(--cyan); }
+
   .foot { flex:0 0 auto; display:flex; flex-wrap:wrap; align-items:center; justify-content:space-between; gap:8px 16px; font:500 11px/1 ui-monospace,Consolas,monospace; letter-spacing:.18em; color:var(--dim); border-top:1px solid var(--line); padding:10px 7vw; }
   .nav { display:flex; align-items:center; gap:10px; }
   .nav .counter { font:500 12px/1 ui-monospace,Consolas,monospace; color:var(--dim); letter-spacing:.12em; min-width:72px; text-align:center; }
-  .nav button { width:44px; height:44px; display:inline-flex; align-items:center; justify-content:center; border:1px solid var(--line); background:rgba(10,18,32,.72); color:var(--ink); font:700 20px/1 ui-monospace,Consolas,monospace; cursor:pointer; border-radius:9px; transition:background .15s ease, border-color .15s ease, color .15s ease, opacity .15s ease; }
+  .nav button { width:44px; height:44px; display:inline-flex; align-items:center; justify-content:center; border:1px solid var(--line); background:rgba(10,18,32,.72); color:var(--ink); font:700 20px/1 ui-monospace,Consolas,monospace; cursor:pointer; border-radius:9px; transition:all .15s ease; }
   .nav button:hover:not(:disabled) { background:rgba(0,229,255,.12); border-color:var(--cyan); color:var(--cyan); }
   .nav button:focus-visible { outline:2px solid var(--cyan); outline-offset:2px; }
   .nav button:disabled { opacity:.32; cursor:not-allowed; }
-  .lang { display:inline-flex; gap:4px; }
-  .lang button { height:40px; padding:0 12px; border:1px solid var(--line); background:rgba(10,18,32,.72); color:var(--dim); font:700 12px/1 ui-monospace,Consolas,monospace; letter-spacing:.08em; cursor:pointer; border-radius:8px; transition:background .15s ease, border-color .15s ease, color .15s ease; }
-  .lang button:hover:not([aria-pressed="true"]) { color:var(--ink); border-color:var(--cyan); }
-  .lang button:focus-visible { outline:2px solid var(--cyan); outline-offset:2px; }
-  .lang button[aria-pressed="true"] { color:#04121a; background:var(--cyan); border-color:var(--cyan); }
   .bar { position:absolute; top:0; left:0; height:3px; background:linear-gradient(90deg,var(--amber),var(--cyan)); transition:width .35s ease; z-index:30; }
-  @media (max-width:820px) { .split { grid-template-columns:1fr; } .grid3 { grid-template-columns:1fr; gap:10px; } .slide-inner { padding:4vh 6vw; } table { font-size:12px; } .nav button { width:40px; height:40px; } .lang button { height:36px; padding:0 10px; } .foot { padding:8px 6vw; } }
+  html[data-mode="bi"] [data-i18n="es"]::after { content:" · "; color:var(--dim); }
+  @media (max-width:900px) {
+    html[data-mode="bi"] .slide-inner { grid-template-columns:1fr; }
+    html[data-mode="bi"] .col + .col { border-left:none; padding-left:0; border-top:1px dashed var(--line); padding-top:12px; }
+    .grid3 { grid-template-columns:1fr; gap:8px; }
+    .slide { padding:4vh 6vw; }
+    table { font-size:11px; }
+    .nav button { width:40px; height:40px; }
+    .langbar { top:8px; right:8px; padding:4px; }
+    .langbar button { height:30px; padding:0 9px; font-size:11px; }
+    .langbar .lb { display:none; }
+    .foot { padding:8px 6vw; }
+  }
 </style>
 </head>
 <body>
+
+<div class="langbar" role="group" aria-label="Idioma / Language">
+  <span class="lb">IDIOMA</span>
+  <button id="lang-es" type="button" aria-pressed="true" title="Español">ES</button>
+  <button id="lang-en" type="button" aria-pressed="false" title="English">EN</button>
+  <button id="lang-bi" type="button" aria-pressed="false" title="Español + English (dos columnas)">ES+EN</button>
+</div>
+
 <div class="deck" id="deck">
   <div class="stage" id="stage">
     <div class="bar" id="bar"></div>
@@ -91,288 +109,309 @@
     <!-- 1 · PORTADA -->
     <section class="slide on">
       <div class="slide-inner">
-        <div class="kicker"><span data-i18n="es">StartRoot · Presentación 2026</span><span data-i18n="en">StartRoot · Presentation 2026</span></div>
-        <h1><span data-i18n="es">VISOR<br><em>LUNAR</em></span><span data-i18n="en">LUNAR<br><em>VISOR</em></span></h1>
-        <p class="lead"><span data-i18n="es">Un casco de EVA que no muestra datos: <b>decide por dónde pisar</b>.</span><span data-i18n="en">An EVA helmet that doesn't show data: <b>it decides where you step</b>.</span></p>
-        <p class="sub"><span data-i18n="es">Terreno real del polo sur, ruteo metabólico, efemérides en vivo y telemetría con hardware — en un único archivo que cualquiera puede abrir.</span><span data-i18n="en">Real south-pole terrain, metabolic routing, live ephemerides and hardware telemetry — in a single file anyone can open.</span></p>
-        <span class="tag"><span data-i18n="es">DEMO EN VIVO → gestion2026.online</span><span data-i18n="en">LIVE DEMO → gestion2026.online</span></span>
+        <div class="col" data-lang="es">
+          <div class="kicker">StartRoot · Presentación 2026</div>
+          <h1>VISOR<br><em>LUNAR</em></h1>
+          <p class="lead">Un casco de EVA que no muestra datos: <b>decide por dónde pisar</b>.</p>
+          <p class="sub">Terreno real del polo sur, ruteo metabólico, efemérides en vivo y telemetría con hardware — en un único archivo que cualquiera puede abrir.</p>
+          <span class="tag">DEMO EN VIVO → gestion2026.online</span>
+        </div>
+        <div class="col" data-lang="en">
+          <div class="kicker">StartRoot · Presentation 2026</div>
+          <h1>LUNAR<br><em>VISOR</em></h1>
+          <p class="lead">An EVA helmet that doesn't show data: <b>it decides where you step</b>.</p>
+          <p class="sub">Real south-pole terrain, metabolic routing, live ephemerides and hardware telemetry — in a single file anyone can open.</p>
+          <span class="tag">LIVE DEMO → gestion2026.online</span>
+        </div>
       </div>
     </section>
 
     <!-- 2 · INTRODUCCIÓN / EL RETO -->
     <section class="slide">
       <div class="slide-inner">
-        <div class="kicker"><span data-i18n="es">01 · El reto</span><span data-i18n="en">01 · The challenge</span></div>
-        <h2><span data-i18n="es">Allá arriba, el paisaje no colabora.</span><span data-i18n="en">Up there, the landscape doesn't cooperate.</span></h2>
-        <div class="grid3">
-          <div class="card"><b><span data-i18n="es">−73,7°</span><span data-i18n="en">−73.7°</span></b><span><span data-i18n="es">Elevación solar real hoy en 89,9°S. Sombras largas, casi perpetuas; el relieve se lee mal.</span><span data-i18n="en">Real solar elevation today at 89.9°S. Long, nearly permanent shadows; the relief is hard to read.</span></span></div>
-          <div class="card"><b><span data-i18n="es">0</span><span data-i18n="en">0</span></b><span><span data-i18n="es">No hay GPS ni horizonte fiable. La Tierra entra y sale de la línea de visión y el enlace directo se cae.</span><span data-i18n="en">No GPS, no reliable horizon. Earth slips in and out of line of sight and the direct link drops.</span></span></div>
-          <div class="card"><b><span data-i18n="es">O₂</span><span data-i18n="en">O₂</span></b><span><span data-i18n="es">Cada rodeo se paga en oxígeno y kcal. Un desvío innecesario no es un rodeo: es presupuesto.</span><span data-i18n="en">Every detour is paid in oxygen and kcal. An unnecessary detour isn't a detour — it's budget.</span></span></div>
+        <div class="col" data-lang="es">
+          <div class="kicker">01 · El reto</div>
+          <h2>Allá arriba, el paisaje no colabora.</h2>
+          <div class="grid3">
+            <div class="card"><b>−73,7°</b><span>Elevación solar real hoy en 89,9°S. Sombras largas, casi perpetuas; el relieve se lee mal.</span></div>
+            <div class="card"><b>0</b><span>No hay GPS ni horizonte fiable. La Tierra entra y sale de la línea de visión y el enlace directo se cae.</span></div>
+            <div class="card"><b>O₂</b><span>Cada rodeo se paga en oxígeno y kcal. Un desvío innecesario no es un rodeo: es presupuesto.</span></div>
+          </div>
+          <p class="lead" style="margin-top:26px">«Un astronauta no necesita más números. Necesita <b>la decisión correcta ya proyectada sobre el suelo</b>».</p>
         </div>
-        <p class="lead" style="margin-top:32px"><span data-i18n="es">«Un astronauta no necesita más números. Necesita <b>la decisión correcta ya proyectada sobre el suelo</b>».</span><span data-i18n="en">“An astronaut doesn't need more numbers. They need <b>the right decision already projected onto the ground</b>.”</span></p>
+        <div class="col" data-lang="en">
+          <div class="kicker">01 · The challenge</div>
+          <h2>Up there, the landscape doesn't cooperate.</h2>
+          <div class="grid3">
+            <div class="card"><b>−73.7°</b><span>Real solar elevation today at 89.9°S. Long, nearly permanent shadows; the relief is hard to read.</span></div>
+            <div class="card"><b>0</b><span>No GPS, no reliable horizon. Earth slips in and out of line of sight and the direct link drops.</span></div>
+            <div class="card"><b>O₂</b><span>Every detour is paid in oxygen and kcal. An unnecessary detour isn't a detour — it's budget.</span></div>
+          </div>
+          <p class="lead" style="margin-top:26px">“An astronaut doesn't need more numbers. They need <b>the right decision already projected onto the ground</b>.”</p>
+        </div>
       </div>
     </section>
 
     <!-- 3 · LA IDEA -->
     <section class="slide">
       <div class="slide-inner">
-        <div class="split">
-          <div>
-            <div class="kicker"><span data-i18n="es">02 · La idea</span><span data-i18n="en">02 · The idea</span></div>
-            <h2><span data-i18n="es">Un visor.<br><em style="font-style:normal;color:var(--cyan)">Todo en uno.</em></span><span data-i18n="en">A visor.<br><em style="font-style:normal;color:var(--cyan)">All in one.</em></span></h2>
-            <p class="lead"><span data-i18n="es">Primera persona, 1/6 G, con corredor de dos flechas, retícula láser, cámara trasera, muñeca táctica y alertas C&amp;W conviviendo en el mismo fotograma.</span><span data-i18n="en">First person, 1/6 G, with a two-arrow corridor, laser reticle, rear camera, tactical wrist and C&amp;W alerts sharing the same frame.</span></p>
-            <p class="sub"><span data-i18n="es">No es un dashboard que miras: es el campo de visión por el que caminas. Un enlace público, sin instalación, sin cuenta y sin servidor.</span><span data-i18n="en">It's not a dashboard you look at: it's the field of view you walk through. A public link — no install, no account, no server.</span></p>
-            <div class="chips"><span class="chip"><span data-i18n="es">WASD</span><span data-i18n="en">WASD</span></span><span class="chip"><span data-i18n="es">TAB · MUÑECA</span><span data-i18n="en">TAB · WRIST</span></span><span class="chip"><span data-i18n="es">M · FAIL-SAFE</span><span data-i18n="en">M · FAIL-SAFE</span></span><span class="chip"><span data-i18n="es">Q · WAYPOINTS</span><span data-i18n="en">Q · WAYPOINTS</span></span></div>
-          </div>
-          <figure><img src="assets/hero.png" alt="Captura real del visor lunar en funcionamiento" data-alt-es="Captura real del visor lunar en funcionamiento" data-alt-en="Real capture of the running lunar visor"><figcaption><span data-i18n="es">Captura real del visor en ejecución — sin generación por SI.</span><span data-i18n="en">Real capture of the running visor — not SI-generated.</span></figcaption></figure>
+        <div class="col" data-lang="es">
+          <div class="kicker">02 · La idea</div>
+          <h2>Un visor.<br><em style="font-style:normal;color:var(--cyan)">Todo en uno.</em></h2>
+          <p class="lead">Primera persona, 1/6 G, con corredor de dos flechas, retícula láser, cámara trasera, muñeca táctica y alertas C&amp;W conviviendo en el mismo fotograma.</p>
+          <p class="sub">No es un dashboard que miras: es el campo de visión por el que caminas. Un enlace público, sin instalación, sin cuenta y sin servidor.</p>
+          <div class="chips"><span class="chip">WASD</span><span class="chip">TAB · MUÑECA</span><span class="chip">M · FAIL-SAFE</span><span class="chip">Q · WAYPOINTS</span></div>
         </div>
+        <div class="col" data-lang="en">
+          <div class="kicker">02 · The idea</div>
+          <h2>A visor.<br><em style="font-style:normal;color:var(--cyan)">All in one.</em></h2>
+          <p class="lead">First person, 1/6 G, with a two-arrow corridor, laser reticle, rear camera, tactical wrist and C&amp;W alerts sharing the same frame.</p>
+          <p class="sub">It's not a dashboard you look at: it's the field of view you walk through. A public link — no install, no account, no server.</p>
+          <div class="chips"><span class="chip">WASD</span><span class="chip">TAB · WRIST</span><span class="chip">M · FAIL-SAFE</span><span class="chip">Q · WAYPOINTS</span></div>
+        </div>
+        <figure class="wide">
+          <img src="assets/hero.png" alt="Captura real del visor lunar en funcionamiento" data-alt-es="Captura real del visor lunar en funcionamiento" data-alt-en="Real capture of the running lunar visor">
+          <figcaption><span data-i18n="es">Captura real del visor en ejecución — sin generación por SI.</span><span data-i18n="en">Real capture of the running visor — not SI-generated.</span></figcaption>
+        </figure>
       </div>
     </section>
 
     <!-- 4 · TERRENO REAL -->
     <section class="slide">
       <div class="slide-inner">
-        <div class="kicker"><span data-i18n="es">03 · El suelo</span><span data-i18n="en">03 · The ground</span></div>
-        <h2><span data-i18n="es">No es un paisaje generado. <em style="font-style:normal;color:var(--amber)">Es Shackleton.</em></span><span data-i18n="en">It's not a generated landscape. <em style="font-style:normal;color:var(--amber)">It's Shackleton.</em></span></h2>
-        <div class="grid3">
-          <div class="card"><b><span data-i18n="es">5 m/px</span><span data-i18n="en">5 m/px</span></b><span><span data-i18n="es">LDEM LRO/LOLA Site04, 3200×3200 originales, reducidos a 512×512 alturas Int16 (524 288 bytes) servidas al navegador.</span><span data-i18n="en">LDEM LRO/LOLA Site04, 3200×3200 originals, reduced to 512×512 Int16 heights (524,288 bytes) served to the browser.</span></span></div>
-          <div class="card"><b><span data-i18n="es">758,4 m</span><span data-i18n="en">758.4 m</span></b><span><span data-i18n="es">Altitud real mostrada en el HUD durante la verificación; la ruta C++ de 41 km se recalcula sobre el relieve real.</span><span data-i18n="en">Real altitude shown in the HUD during verification; the 41 km C++ route is recomputed over the real relief.</span></span></div>
-          <div class="card"><b><span data-i18n="es">0,406 m</span><span data-i18n="en">0.406 m</span></b><span><span data-i18n="es">Error máximo de muestreo medido contra el GeoTIFF. Si no hay datos, el HUD lo dice: «SIMULADO».</span><span data-i18n="en">Maximum sampling error measured against the GeoTIFF. When data is missing, the HUD says so: “SIMULATED”.</span></span></div>
+        <div class="col" data-lang="es">
+          <div class="kicker">03 · El suelo</div>
+          <h2>No es un paisaje generado. <em style="font-style:normal;color:var(--amber)">Es Shackleton.</em></h2>
+          <div class="grid3">
+            <div class="card"><b>5 m/px</b><span>LDEM LRO/LOLA Site04, 3200×3200 originales, reducidos a 512×512 alturas Int16 (524 288 bytes) servidas al navegador.</span></div>
+            <div class="card"><b>758,4 m</b><span>Altitud real mostrada en el HUD durante la verificación; la ruta C++ de 41 km se recalcula sobre el relieve real.</span></div>
+            <div class="card"><b>0,406 m</b><span>Error máximo de muestreo medido contra el GeoTIFF. Si no hay datos, el HUD lo dice: «SIMULADO».</span></div>
+          </div>
+          <p class="sub">Cualquier persona abre el enlace y camina sobre el borde del cráter real — no sobre una función seno.</p>
         </div>
-        <p class="sub"><span data-i18n="es">Cualquier persona abre el enlace y camina sobre el borde del cráter real — no sobre una función seno.</span><span data-i18n="en">Anyone opens the link and walks along the edge of the real crater — not over a sine function.</span></p>
+        <div class="col" data-lang="en">
+          <div class="kicker">03 · The ground</div>
+          <h2>It's not a generated landscape. <em style="font-style:normal;color:var(--amber)">It's Shackleton.</em></h2>
+          <div class="grid3">
+            <div class="card"><b>5 m/px</b><span>LDEM LRO/LOLA Site04, 3200×3200 originals, reduced to 512×512 Int16 heights (524,288 bytes) served to the browser.</span></div>
+            <div class="card"><b>758.4 m</b><span>Real altitude shown in the HUD during verification; the 41 km C++ route is recomputed over the real relief.</span></div>
+            <div class="card"><b>0.406 m</b><span>Maximum sampling error measured against the GeoTIFF. When data is missing, the HUD says so: “SIMULATED”.</span></div>
+          </div>
+          <p class="sub">Anyone opens the link and walks along the edge of the real crater — not over a sine function.</p>
+        </div>
       </div>
     </section>
 
     <!-- 5 · CINCO CAPAS -->
     <section class="slide">
       <div class="slide-inner">
-        <div class="kicker"><span data-i18n="es">04 · Ingeniería</span><span data-i18n="en">04 · Engineering</span></div>
-        <h2><span data-i18n="es">Cinco decisiones, un solo bucle de render.</span><span data-i18n="en">Five decisions, a single render loop.</span></h2>
-        <table>
-          <tr><td>01</td><td><span data-i18n="es"><b>A* metabólico</b> <small>— grid 21×15, pendientes &gt;25° y rocas como coste; ahorro de O₂ y kcal/min en pantalla; chevrons que siguen el terreno.</small></span><span data-i18n="en"><b>Metabolic A*</b> <small>— 21×15 grid, slopes &gt;25° and rocks as cost; O₂ and kcal/min savings on screen; chevrons that follow the terrain.</small></span></td></tr>
-          <tr><td>02</td><td><span data-i18n="es"><b>Visión artificial</b> <small>— Canny en JS puro (Sobel, NMS, histéresis 55/150) + contornos; cajas AR con distancia estimada desde la webcam.</small></span><span data-i18n="en"><b>Computer vision</b> <small>— Canny in pure JS (Sobel, NMS, hysteresis 55/150) + contours; AR boxes with distance estimated from the webcam.</small></span></td></tr>
-          <tr><td>03</td><td><span data-i18n="es"><b>Efemérides en vivo</b> <small>— Sol AZ/EL y Tierra desde 89,9°S; si EL &lt; 0, conmutación real a relé GATEWAY.</small></span><span data-i18n="en"><b>Live ephemerides</b> <small>— Sun AZ/EL and Earth from 89.9°S; when EL &lt; 0, real switch to the GATEWAY relay.</small></span></td></tr>
-          <tr><td>04</td><td><span data-i18n="es"><b>C&amp;W 1/2/3 + Fail-Safe</b> <small>— monocromo, 20 fps y consumo mínimo ante batería, radiación o emergencia sostenida.</small></span><span data-i18n="en"><b>C&amp;W 1/2/3 + Fail-Safe</b> <small>— monochrome, 20 fps and minimal consumption under battery, radiation or sustained emergency.</small></span></td></tr>
-          <tr><td>05</td><td><span data-i18n="es"><b>Telemetría PC ↔ ESP32</b> <small>— JSON cada 250 ms, uplink 10 Hz, demonstrable en Wokwi sin comprar una placa.</small></span><span data-i18n="en"><b>PC ↔ ESP32 telemetry</b> <small>— JSON every 250 ms, 10 Hz uplink, demonstrable in Wokwi without buying a board.</small></span></td></tr>
-        </table>
+        <div class="col" data-lang="es">
+          <div class="kicker">04 · Ingeniería</div>
+          <h2>Cinco decisiones, un solo bucle de render.</h2>
+          <table>
+            <tr><td>01</td><td><b>A* metabólico</b> <small>— grid 21×15, pendientes &gt;25° y rocas como coste; ahorro de O₂ y kcal/min en pantalla; chevrons que siguen el terreno.</small></td></tr>
+            <tr><td>02</td><td><b>Visión artificial</b> <small>— Canny en JS puro (Sobel, NMS, histéresis 55/150) + contornos; cajas AR con distancia estimada desde la webcam.</small></td></tr>
+            <tr><td>03</td><td><b>Efemérides en vivo</b> <small>— Sol AZ/EL y Tierra desde 89,9°S; si EL &lt; 0, conmutación real a relé GATEWAY.</small></td></tr>
+            <tr><td>04</td><td><b>C&amp;W 1/2/3 + Fail-Safe</b> <small>— monocromo, 20 fps y consumo mínimo ante batería, radiación o emergencia sostenida.</small></td></tr>
+            <tr><td>05</td><td><b>Telemetría PC ↔ ESP32</b> <small>— JSON cada 250 ms, uplink 10 Hz, demostrable en Wokwi sin comprar una placa.</small></td></tr>
+          </table>
+        </div>
+        <div class="col" data-lang="en">
+          <div class="kicker">04 · Engineering</div>
+          <h2>Five decisions, a single render loop.</h2>
+          <table>
+            <tr><td>01</td><td><b>Metabolic A*</b> <small>— 21×15 grid, slopes &gt;25° and rocks as cost; O₂ and kcal/min savings on screen; chevrons that follow the terrain.</small></td></tr>
+            <tr><td>02</td><td><b>Computer vision</b> <small>— Canny in pure JS (Sobel, NMS, hysteresis 55/150) + contours; AR boxes with distance estimated from the webcam.</small></td></tr>
+            <tr><td>03</td><td><b>Live ephemerides</b> <small>— Sun AZ/EL and Earth from 89.9°S; when EL &lt; 0, real switch to the GATEWAY relay.</small></td></tr>
+            <tr><td>04</td><td><b>C&amp;W 1/2/3 + Fail-Safe</b> <small>— monochrome, 20 fps and minimal consumption under battery, radiation or sustained emergency.</small></td></tr>
+            <tr><td>05</td><td><b>PC ↔ ESP32 telemetry</b> <small>— JSON every 250 ms, 10 Hz uplink, demonstrable in Wokwi without buying a board.</small></td></tr>
+          </table>
+        </div>
       </div>
     </section>
 
     <!-- 6 · EVIDENCIA -->
     <section class="slide">
       <div class="slide-inner">
-        <div class="kicker"><span data-i18n="es">05 · Evidencia</span><span data-i18n="en">05 · Evidence</span></div>
-        <h2><span data-i18n="es">Verificado, no prometido.</span><span data-i18n="en">Verified, not promised.</span></h2>
-        <div class="chips">
-          <span class="chip"><span data-i18n="es">0 ERRORES DE CONSOLA</span><span data-i18n="en">0 CONSOLE ERRORS</span></span><span class="chip"><span data-i18n="es">DEM 524 288 B · HTTP 200</span><span data-i18n="en">DEM 524,288 B · HTTP 200</span></span>
-          <span class="chip"><span data-i18n="es">SOL AZ 264,4° / EL −73,7°</span><span data-i18n="en">SUN AZ 264.4° / EL −73.7°</span></span><span class="chip"><span data-i18n="es">TIERRA +3,4° → DTE TIERRA</span><span data-i18n="en">EARTH +3.4° → DTE EARTH</span></span>
-          <span class="chip"><span data-i18n="es">DOMINIO ACTIVO · HTTPS</span><span data-i18n="en">ACTIVE DOMAIN · HTTPS</span></span><span class="chip"><span data-i18n="es">WOKWI 6 PARTES / 14 CONEXIONES</span><span data-i18n="en">WOKWI 6 PARTS / 14 CONNECTIONS</span></span>
-          <span class="chip"><span data-i18n="es">FIRMWARE: 0 WARNINGS</span><span data-i18n="en">FIRMWARE: 0 WARNINGS</span></span>
+        <div class="col" data-lang="es">
+          <div class="kicker">05 · Evidencia</div>
+          <h2>Verificado, no prometido.</h2>
+          <div class="chips">
+            <span class="chip">0 ERRORES DE CONSOLA</span><span class="chip">DEM 524 288 B · HTTP 200</span>
+            <span class="chip">SOL AZ 264,4° / EL −73,7°</span><span class="chip">TIERRA +3,4° → DTE TIERRA</span>
+            <span class="chip">DOMINIO ACTIVO · HTTPS</span><span class="chip">WOKWI 6 PARTES / 14 CONEXIONES</span>
+            <span class="chip">FIRMWARE: 0 WARNINGS</span>
+          </div>
+          <p class="sub">Y lo que no pudimos probar, también está escrito: firmware no flasheado en placa física y cámara limitada en el navegador sin webcam. La honestidad es parte del diseño.</p>
+          <span class="tag">REPO PÚBLICO · DEMO · GUÍA WOKWI · TODO REPRODUCIBLE</span>
         </div>
-        <p class="sub"><span data-i18n="es">Y lo que no pudimos probar, también está escrito: firmware no flasheado en placa física y cámara limitada en el navegador sin webcam. La honestidad es parte del diseño.</span><span data-i18n="en">And what we couldn't test is written down too: firmware not flashed onto a physical board, and a browser with no webcam limiting the camera. Honesty is part of the design.</span></p>
-        <span class="tag"><span data-i18n="es">REPO PÚBLICO · DEMO · GUÍA WOKWI · TODO REPRODUCIBLE</span><span data-i18n="en">PUBLIC REPO · DEMO · WOKWI GUIDE · FULLY REPRODUCIBLE</span></span>
+        <div class="col" data-lang="en">
+          <div class="kicker">05 · Evidence</div>
+          <h2>Verified, not promised.</h2>
+          <div class="chips">
+            <span class="chip">0 CONSOLE ERRORS</span><span class="chip">DEM 524,288 B · HTTP 200</span>
+            <span class="chip">SUN AZ 264.4° / EL −73.7°</span><span class="chip">EARTH +3.4° → DTE EARTH</span>
+            <span class="chip">ACTIVE DOMAIN · HTTPS</span><span class="chip">WOKWI 6 PARTS / 14 CONNECTIONS</span>
+            <span class="chip">FIRMWARE: 0 WARNINGS</span>
+          </div>
+          <p class="sub">And what we couldn't test is written down too: firmware not flashed onto a physical board, and a browser with no webcam limiting the camera. Honesty is part of the design.</p>
+          <span class="tag">PUBLIC REPO · DEMO · WOKWI GUIDE · FULLY REPRODUCIBLE</span>
+        </div>
       </div>
     </section>
 
     <!-- 7 · CIERRE -->
     <section class="slide">
       <div class="slide-inner">
-        <div class="kicker"><span data-i18n="es">06 · Cierre</span><span data-i18n="en">06 · Closing</span></div>
-        <h2><span data-i18n="es">Del casco<br><em style="font-style:normal;color:var(--cyan)">al cráter.</em></span><span data-i18n="en">From the helmet<br><em style="font-style:normal;color:var(--cyan)">to the crater.</em></span></h2>
-        <p class="lead"><span data-i18n="es">Hoy funciona en la web. Mañana: más sitios de aterrizaje, perfil metabólico por astronauta, exportación de rutas y la misma telemetría en una placa real.</span><span data-i18n="en">Today it runs on the web. Tomorrow: more landing sites, per-astronaut metabolic profile, route export and the same telemetry on a real board.</span></p>
-        <div class="cta"><span data-i18n="es">ÁBRELO Y CAMINA → <a href="https://gestion2026.online" target="_blank" rel="noopener noreferrer">https://gestion2026.online</a></span><span data-i18n="en">OPEN IT AND WALK → <a href="https://gestion2026.online" target="_blank" rel="noopener noreferrer">https://gestion2026.online</a></span>
-          <small>
-            <span data-i18n="es">WASD para avanzar · TAB para la muñeca · M para el modo de emergencia<br>StartRoot · 7 diapositivas · demo pública sin registro<br>Código: <a href="https://github.com/FerminGonzalez/startroot-lunar-hud" target="_blank" rel="noopener noreferrer">github.com/FerminGonzalez/startroot-lunar-hud</a></span>
-            <span data-i18n="en">WASD to move · TAB for the wrist · M for emergency mode<br>StartRoot · 7 slides · public demo, no signup<br>Source: <a href="https://github.com/FerminGonzalez/startroot-lunar-hud" target="_blank" rel="noopener noreferrer">github.com/FerminGonzalez/startroot-lunar-hud</a></span>
-          </small>
+        <div class="col" data-lang="es">
+          <div class="kicker">06 · Cierre</div>
+          <h2>Del casco<br><em style="font-style:normal;color:var(--cyan)">al cráter.</em></h2>
+          <p class="lead">Hoy funciona en la web. Mañana: más sitios de aterrizaje, perfil metabólico por astronauta, exportación de rutas y la misma telemetría en una placa real.</p>
+          <div class="cta">ÁBRELO Y CAMINA → <a href="https://gestion2026.online" target="_blank" rel="noopener noreferrer">https://gestion2026.online</a>
+            <small>
+              WASD para avanzar · TAB para la muñeca · M para el modo de emergencia<br>StartRoot · 7 diapositivas · demo pública sin registro<br>Código: <a href="https://github.com/FerminGonzalez/startroot-lunar-hud" target="_blank" rel="noopener noreferrer">github.com/FerminGonzalez/startroot-lunar-hud</a>
+            </small>
+          </div>
+        </div>
+        <div class="col" data-lang="en">
+          <div class="kicker">06 · Closing</div>
+          <h2>From the helmet<br><em style="font-style:normal;color:var(--cyan)">to the crater.</em></h2>
+          <p class="lead">Today it runs on the web. Tomorrow: more landing sites, per-astronaut metabolic profile, route export and the same telemetry on a real board.</p>
+          <div class="cta">OPEN IT AND WALK → <a href="https://gestion2026.online" target="_blank" rel="noopener noreferrer">https://gestion2026.online</a>
+            <small>
+              WASD to move · TAB for the wrist · M for emergency mode<br>StartRoot · 7 slides · public demo, no signup<br>Source: <a href="https://github.com/FerminGonzalez/startroot-lunar-hud" target="_blank" rel="noopener noreferrer">github.com/FerminGonzalez/startroot-lunar-hud</a>
+            </small>
+          </div>
         </div>
       </div>
     </section>
-  </div>
 
-  <div class="foot">
-    <span>STARTROOT · VISOR LUNAR</span>
-    <div class="nav" id="nav" role="group" aria-label="Navegación de diapositivas">
-      <button id="prev" type="button" aria-label="Diapositiva anterior">←</button>
-      <span id="counter" aria-live="polite">01 / 07</span>
-      <button id="next" type="button" aria-label="Diapositiva siguiente">→</button>
-      <span class="lang" role="group" aria-label="Idioma / Language">
-        <button id="lang-es" type="button" aria-pressed="true" aria-label="Español">ES</button>
-        <button id="lang-en" type="button" aria-pressed="false" aria-label="English">EN</button>
+    <div class="foot">
+      <span>STARTROOT · VISOR LUNAR</span>
+      <span class="nav">
+        <button id="prev" type="button" aria-label="Anterior / Previous">◀</button>
+        <span class="counter" id="counter">01 / 07</span>
+        <button id="next" type="button" aria-label="Siguiente / Next">▶</button>
       </span>
     </div>
   </div>
 </div>
+
 <script>
-(() => {
-  'use strict';
-  const slides = [...document.querySelectorAll('.slide')];
-  const counter = document.getElementById('counter');
+(function () {
+  const slides = Array.prototype.slice.call(document.querySelectorAll('.slide'));
+  const stage = document.getElementById('stage');
   const bar = document.getElementById('bar');
+  const counter = document.getElementById('counter');
   const prevBtn = document.getElementById('prev');
   const nextBtn = document.getElementById('next');
-  const stage = document.getElementById('stage');
-  const navGroup = document.getElementById('nav');
-  const langEs = document.getElementById('lang-es');
-  const langEn = document.getElementById('lang-en');
-  const N = slides.length;
-  const LANG_KEY = 'visor_lunar_lang';
-  let i = 0;
+  const MODES = ['es', 'en', 'bi'];
+  let idx = 0;
+  let mode = 'es';
 
-  const fmt = n => String(n + 1).padStart(2, '0') + ' / ' + String(N).padStart(2, '0');
+  // ---------- idioma ----------
+  function resolveMode() {
+    const q = new URLSearchParams(location.search).get('lang');
+    if (q && MODES.indexOf(q) !== -1) return q;
+    try { const s = localStorage.getItem('visor_lunar_lang'); if (s && MODES.indexOf(s) !== -1) return s; } catch (e) { }
+    return 'es';
+  }
+  function applyMode(next, persist) {
+    mode = MODES.indexOf(next) !== -1 ? next : 'es';
+    document.documentElement.setAttribute('data-mode', mode);
+    document.documentElement.setAttribute('lang', mode === 'en' ? 'en' : 'es');
+    MODES.forEach(function (m) {
+      const b = document.getElementById('lang-' + m);
+      if (b) b.setAttribute('aria-pressed', String(m === mode));
+    });
+    document.querySelectorAll('img[data-alt-es]').forEach(function (img) {
+      img.alt = mode === 'en' ? img.getAttribute('data-alt-en') : img.getAttribute('data-alt-es');
+    });
+    if (persist) { try { localStorage.setItem('visor_lunar_lang', mode); } catch (e) { } }
+    fit();
+  }
+  MODES.forEach(function (m) {
+    const b = document.getElementById('lang-' + m);
+    if (b) b.addEventListener('click', function () { applyMode(m, true); });
+  });
 
-  const update = () => {
-    counter.textContent = fmt(i);
-    bar.style.width = ((i + 1) / N * 100) + '%';
-    prevBtn.disabled = i === 0;
-    nextBtn.disabled = i === N - 1;
-  };
-
-  const fitSlide = slide => {
+  // ---------- auto-ajuste ----------
+  function fit() {
+    const slide = slides[idx];
+    if (!slide) return;
     const inner = slide.querySelector('.slide-inner');
     if (!inner) return;
-    const availW = slide.clientWidth;
-    const availH = slide.clientHeight;
-    const contentW = inner.offsetWidth;
-    const contentH = inner.offsetHeight;
-    if (!contentW || !contentH) return;
-    const fit = Math.min(1, availW / contentW, availH / contentH);
-    inner.style.transform = 'scale(' + fit + ')';
-  };
+    inner.style.transform = 'none';
+    const cs = getComputedStyle(slide);
+    const availW = slide.clientWidth - parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight);
+    const availH = slide.clientHeight - parseFloat(cs.paddingTop) - parseFloat(cs.paddingBottom);
+    const w = inner.scrollWidth || 1, h = inner.scrollHeight || 1;
+    const s = Math.min(1, availW / w, availH / h);
+    inner.style.transform = 'scale(' + s.toFixed(4) + ')';
+  }
+  let fitRaf = null;
+  function scheduleFit() {
+    if (fitRaf) cancelAnimationFrame(fitRaf);
+    fitRaf = requestAnimationFrame(function () { fitRaf = null; fit(); });
+  }
 
-  const fitCurrent = () => { if (slides[i]) fitSlide(slides[i]); };
-
-  let raf = null;
-  const scheduleFit = () => {
-    if (raf) return;
-    raf = requestAnimationFrame(() => { raf = null; fitCurrent(); });
-  };
-
-  const show = n => {
-    i = Math.max(0, Math.min(N - 1, n));
-    slides.forEach((s, k) => s.classList.toggle('on', k === i));
-    update();
+  // ---------- navegación ----------
+  function show(n) {
+    idx = Math.max(0, Math.min(slides.length - 1, n));
+    slides.forEach(function (s, k) { s.classList.toggle('on', k === idx); });
+    counter.textContent = String(idx + 1).padStart(2, '0') + ' / ' + String(slides.length).padStart(2, '0');
+    bar.style.width = ((idx + 1) / slides.length * 100) + '%';
+    if (prevBtn) prevBtn.disabled = (idx === 0);
+    if (nextBtn) nextBtn.disabled = (idx === slides.length - 1);
     scheduleFit();
-  };
+  }
+  function go(n) {
+    const t = Math.max(0, Math.min(slides.length - 1, n));
+    if ('#s' + (t + 1) === location.hash) { show(t); return; }
+    location.hash = '#s' + (t + 1);
+  }
+  function parseHash() {
+    const m = /^#s(\d+)$/.exec(location.hash || '');
+    return m ? Math.max(0, Math.min(slides.length - 1, parseInt(m[1], 10) - 1)) : 0;
+  }
+  window.addEventListener('hashchange', function () { show(parseHash()); });
+  if (prevBtn) prevBtn.addEventListener('click', function () { go(idx - 1); });
+  if (nextBtn) nextBtn.addEventListener('click', function () { go(idx + 1); });
 
-  const parseHash = h => {
-    const m = /^#s(\d+)$/.exec(h || '');
-    if (!m) return 0;
-    const idx = parseInt(m[1], 10) - 1;
-    return idx >= 0 && idx < N ? idx : 0;
-  };
-
-  const go = n => {
-    const clamped = Math.max(0, Math.min(N - 1, n));
-    show(clamped);
-    const h = '#s' + (clamped + 1);
-    if (location.hash !== h) { try { location.hash = h; } catch (err) {} }
-  };
-
-  const resolveLang = () => {
-    try {
-      const q = new URLSearchParams(location.search).get('lang');
-      if (q === 'en' || q === 'es') return q;
-    } catch (e) {}
-    try {
-      const s = localStorage.getItem(LANG_KEY);
-      if (s === 'en' || s === 'es') return s;
-    } catch (e) {}
-    return 'es';
-  };
-
-  const setLang = next => {
-    const lang = (next === 'en') ? 'en' : 'es';
-    document.documentElement.setAttribute('lang', lang);
-    if (langEs) langEs.setAttribute('aria-pressed', String(lang === 'es'));
-    if (langEn) langEn.setAttribute('aria-pressed', String(lang === 'en'));
-    const hero = document.querySelector('.split img');
-    if (hero) {
-      const alt = hero.getAttribute('data-alt-' + lang);
-      if (alt) hero.alt = alt;
-    }
-    if (navGroup) navGroup.setAttribute('aria-label', lang === 'es' ? 'Navegación de diapositivas' : 'Slide navigation');
-    prevBtn.setAttribute('aria-label', lang === 'es' ? 'Diapositiva anterior' : 'Previous slide');
-    nextBtn.setAttribute('aria-label', lang === 'es' ? 'Diapositiva siguiente' : 'Next slide');
-    try { localStorage.setItem(LANG_KEY, lang); } catch (e) {}
-    scheduleFit();
-  };
-
-  prevBtn.addEventListener('click', () => go(i - 1));
-  nextBtn.addEventListener('click', () => go(i + 1));
-  if (langEs) langEs.addEventListener('click', () => setLang('es'));
-  if (langEn) langEn.addEventListener('click', () => setLang('en'));
-
-  const isTextEntry = t => {
-    if (!t || !t.tagName) return false;
-    const tag = t.tagName.toUpperCase();
-    return tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT' || t.isContentEditable;
-  };
-
-  document.addEventListener('keydown', e => {
-    if (e.metaKey || e.ctrlKey || e.altKey || e.shiftKey) return;
-    if (isTextEntry(e.target)) return;
-    const k = e.key;
-    if (k === 'ArrowRight' || k === 'PageDown') { e.preventDefault(); go(i + 1); return; }
-    if (k === 'ArrowLeft' || k === 'PageUp') { e.preventDefault(); go(i - 1); return; }
-    if (k === 'Home') { e.preventDefault(); go(0); return; }
-    if (k === 'End') { e.preventDefault(); go(N - 1); return; }
-    if (k === ' ' || k === 'Spacebar') {
-      if (e.repeat) return;
-      if (e.target && e.target.tagName && e.target.tagName.toUpperCase() === 'BUTTON') return;
-      e.preventDefault();
-      go(i + 1);
-    }
+  document.addEventListener('keydown', function (e) {
+    if (e.ctrlKey || e.metaKey || e.altKey) return;
+    const t = e.target;
+    if (t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.isContentEditable)) return;
+    if (e.key === 'ArrowRight' || e.key === 'PageDown') { e.preventDefault(); go(idx + 1); }
+    else if (e.key === 'ArrowLeft' || e.key === 'PageUp') { e.preventDefault(); go(idx - 1); }
+    else if (e.key === 'Home') { e.preventDefault(); go(0); }
+    else if (e.key === 'End') { e.preventDefault(); go(slides.length - 1); }
+    else if (e.key === ' ') { if (e.repeat) return; e.preventDefault(); go(idx + 1); }
+    else if (e.key === 'l' || e.key === 'L') { applyMode(MODES[(MODES.indexOf(mode) + 1) % MODES.length], true); }
   });
 
-  window.addEventListener('hashchange', () => {
-    const idx = parseHash(location.hash);
-    if (idx !== i) show(idx);
-  });
-
-  let touchX = null, touchY = null;
-  document.addEventListener('touchstart', e => {
-    if (e.touches.length === 1) { touchX = e.touches[0].clientX; touchY = e.touches[0].clientY; }
+  // swipe táctil (>50 px, dominancia horizontal)
+  let tx = 0, ty = 0, swiping = false;
+  document.addEventListener('touchstart', function (e) {
+    if (!e.touches || e.touches.length !== 1) return;
+    tx = e.touches[0].clientX; ty = e.touches[0].clientY; swiping = true;
   }, { passive: true });
-  document.addEventListener('touchend', e => {
-    if (touchX === null) return;
-    const t = e.changedTouches[0];
-    const dx = t.clientX - touchX;
-    const dy = t.clientY - touchY;
-    touchX = null; touchY = null;
-    if (Math.abs(dx) > 50 && Math.abs(dx) > Math.abs(dy)) { if (dx < 0) go(i + 1); else go(i - 1); }
+  document.addEventListener('touchend', function (e) {
+    if (!swiping) return; swiping = false;
+    const t = e.changedTouches && e.changedTouches[0]; if (!t) return;
+    const dx = t.clientX - tx, dy = t.clientY - ty;
+    if (Math.abs(dx) > 50 && Math.abs(dx) > Math.abs(dy)) go(idx + (dx < 0 ? 1 : -1));
   }, { passive: true });
 
   window.addEventListener('resize', scheduleFit);
   window.addEventListener('orientationchange', scheduleFit);
   window.addEventListener('load', scheduleFit);
+  if (window.ResizeObserver) { const ro = new ResizeObserver(scheduleFit); ro.observe(stage); }
 
-  const hero = document.querySelector('.split img');
-  if (hero) {
-    if (hero.complete && hero.naturalWidth) scheduleFit();
-    else hero.addEventListener('load', scheduleFit);
-  }
-
-  if (window.ResizeObserver) {
-    const ro = new ResizeObserver(scheduleFit);
-    ro.observe(stage);
-    slides.forEach(s => {
-      const inner = s.querySelector('.slide-inner');
-      if (inner) ro.observe(inner);
-    });
-  }
-
-  const start = parseHash(location.hash);
-  show(start);
-  setLang(resolveLang());
-  const startHash = '#s' + (start + 1);
-  if (location.hash !== startHash) {
-    try { history.replaceState(null, '', startHash); } catch (err) {}
-  }
-
-  window.__showSlide = n => show(n);
-  window.__goTo = n => go(n);
-  window.__setLang = l => setLang(l);
+  applyMode(resolveMode(), false);
+  show(parseHash());
+  window.__setMode = applyMode;
+  window.__showSlide = show;
 })();
 </script>
 </body>
