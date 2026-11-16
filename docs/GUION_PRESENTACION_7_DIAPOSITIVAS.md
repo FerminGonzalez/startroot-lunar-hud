@@ -31,7 +31,7 @@
 > «Cero errores de consola en producción. El DEM llega completo por HTTPS. Sol: azimut 264,4 grados, elevación −73,7. Tierra: +3,4 grados, enlace directo activo. Firmware compilado sin warnings, 63 tramas de telemetría validadas, diagrama de Wokwi contra el pinout oficial.»
 > «Y lo que NO pudimos probar también está escrito en el repo: no flasheamos una placa física y el navegador de pruebas no tenía webcam. Prefiero decirlo yo a que lo descubra el jurado.»
 
-ya funciona. Lo que sigue es hacerlo más grande.
+> «Esto ya funciona. Lo que sigue es hacerlo más grande.»
 
 ## Diapositiva 7 · Cierre 
 

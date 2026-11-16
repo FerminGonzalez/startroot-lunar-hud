@@ -205,7 +205,7 @@
     .hud-chip-inline { pointer-events: auto; font-family: 'Share Tech Mono', monospace; }
 
     /* ---- Pantalla táctica de muñeca (TAB) ---- */
-    #wrist-dock { position: fixed; right: 12px; bottom: 12px; z-index: 24; display: flex; flex-direction: column; align-items: flex-end; gap: 6px; }
+    #wrist-dock { position: relative; z-index: 24; pointer-events: auto; }
     #wrist-dock.failsafe-hidden { display: none; }
     #wrist-toggle {
       pointer-events: auto; cursor: pointer;
@@ -215,12 +215,18 @@
     }
     #wrist-toggle:hover, #wrist-toggle:focus { background: rgba(0, 240, 255, 0.16); outline: none; }
     #wrist-panel {
+      /* Fuera del flujo: el dock colapsado es solo el botón; el panel emerge por encima */
+      position: absolute;
+      right: 0;
+      bottom: calc(100% + 8px);
       width: 236px; max-width: 92vw; border-radius: 10px; overflow: hidden;
       background: rgba(12, 20, 32, 0.94); border: 1px solid rgba(0, 240, 255, 0.35);
-      box-shadow: 0 0 20px rgba(0, 240, 255, 0.18); pointer-events: auto;
-      transform: translateY(112%); transition: transform 0.28s cubic-bezier(0.2, 0.8, 0.25, 1);
+      box-shadow: 0 0 20px rgba(0, 240, 255, 0.18);
+      pointer-events: none; opacity: 0;
+      transform: translateY(14px) scale(0.98);
+      transition: transform 0.28s cubic-bezier(0.2, 0.8, 0.25, 1), opacity 0.22s ease;
     }
-    #wrist-dock.raised #wrist-panel { transform: translateY(0); }
+    #wrist-dock.raised #wrist-panel { transform: translateY(0) scale(1); opacity: 1; pointer-events: auto; }
     #wrist-header { display: flex; justify-content: space-between; align-items: center; padding: 6px 10px; font-size: 10px;
       border-bottom: 1px solid rgba(0, 240, 255, 0.3); background: rgba(4, 14, 24, 0.92); }
     #wrist-header .wtitle { color: #00f0ff; font-weight: bold; letter-spacing: 0.06rem; }
@@ -261,6 +267,58 @@
     .wbtn { width: 100%; margin: 6px 0; cursor: pointer; background: rgba(0, 240, 255, 0.14); border: 1px solid rgba(0, 240, 255, 0.5);
       color: #9ff4ff; font-family: inherit; font-size: 9px; letter-spacing: 0.06rem; border-radius: 4px; padding: 5px 8px; }
     .wbtn:hover, .wbtn:focus { background: rgba(0, 240, 255, 0.3); outline: none; }
+
+    /* ================= RESPONSIVE HUD — AUTO-FIT (nada fuera del viewport) =================
+       Estrategia: clamp() en alturas/paddings de los paneles, scroll interno SOLO en
+       listas largas (sensores, syslog, log de muñeca), y un set dedicado ≤820px que
+       recompone las esquinas sin invadir el retículo central. El canvas Three.js ya
+       se reajusta vía el handler resize existente (fpvRenderer.setSize). */
+
+    /* Listas largas: scroll interno con altura acotada (clamp) */
+    #sensors-container { max-height: clamp(110px, 30vh, 40vh); overflow-y: auto; }
+    #sys-log { max-height: 4.25rem; overflow-y: auto; }
+    #wrist-log { max-height: 8.5rem; overflow-y: auto; }
+    #wrist-panel { max-height: 78vh; overflow: auto; }
+
+    /* Los paneles no fuerzan desbordamiento horizontal */
+    [data-hud-panel] { min-width: 0; max-width: 100vw; }
+
+    /* Alas laterales: que su contenido no empuje más allá del alto disponible */
+    #hud-middle { min-height: 0; }
+    #left-hud-wing, #right-hud-wing { max-height: 100%; }
+    #sensors-panel { flex-shrink: 1; }
+
+    /* ================= NARROW / MOBILE (≤820px) ================= */
+    @media (max-width: 820px) {
+      #hud-overlay-root { padding: 4px 6px !important; }
+
+      /* Alas estrechas: caben junto al retículo central; altura acotada con scroll
+         interno para que no empujen el footer fuera del viewport */
+      #left-hud-wing, #right-hud-wing {
+        width: clamp(104px, 26vw, 150px) !important;
+        gap: 4px !important;
+        max-height: 100% !important;
+        overflow-y: auto !important;
+        min-height: 0 !important;
+      }
+      #left-hud-wing .ar-panel, #right-hud-wing .ar-panel { padding: 5px 6px !important; }
+      #sensors-panel { max-height: 150px !important; }
+
+      /* Compás centrado: fluido y sin desbordar */
+      [data-hud-panel="compass"] { width: 100% !important; max-width: 100%; }
+      #compass-strip { font-size: 9px !important; letter-spacing: 0.32em !important; }
+
+      /* Controles superiores: permitir wrap compacto */
+      [data-hud-panel="controls"] { flex-wrap: wrap; row-gap: 3px; }
+
+      /* Footer: apilado natural (ya es flex-col <640px); compactar gaps */
+      #hud-overlay-root footer { gap: 6px; }
+      [data-hud-panel="syslog"] { max-width: 100%; }
+
+      /* Dock de muñeca: ya en el flujo del footer; botón compacto */
+      #wrist-toggle { font-size: 9px; padding: 5px 10px; }
+      #wrist-panel { width: clamp(180px, 80vw, 240px); }
+    }
   </style>
 </head>
 <body class="font-sans antialiased text-hud-cyan h-screen w-screen relative select-none">
@@ -291,7 +349,7 @@
       <div class="w-full flex flex-wrap justify-between items-center gap-2">
         
         <!-- Top-Left: MET Clock, Suit Life Support & Camera Controls -->
-        <div class="ar-panel hud-bracket rounded-md px-2.5 py-1 pointer-events-auto flex items-center gap-2.5">
+        <div data-hud-panel="met" class="ar-panel hud-bracket rounded-md px-2.5 py-1 pointer-events-auto flex items-center gap-2.5">
           <div>
             <span class="text-[8px] font-mono text-slate-300/80 block uppercase tracking-wider">MET MISIÓN</span>
             <span id="met-clock" class="text-sm md:text-base font-mono font-bold text-hud-cyan tracking-wider">00:45:08</span>
@@ -323,7 +381,7 @@
         </div>
 
         <!-- Top-Center: HOLOGRAPHIC NAVIGATION COMPASS TAPE + INTEGRATED ALERT PILL -->
-        <div class="ar-panel hud-bracket rounded-md px-3 py-1 pointer-events-auto flex flex-col items-center w-64 md:w-80">
+        <div data-hud-panel="compass" class="ar-panel hud-bracket rounded-md px-3 py-1 pointer-events-auto flex flex-col items-center w-64 md:w-80">
           <div class="w-full flex justify-between text-[9px] font-mono text-slate-200 mb-0.5">
             <span>RUMBO <strong id="compass-deg" class="text-hud-cyan">180° S</strong></span>
             <span>DESTINO <strong id="nav-wp-name" class="text-hud-green">LANDER BASE (145m)</strong></span>
@@ -337,7 +395,7 @@
         </div>
 
         <!-- Top-Right: HUD Transparency Slider & Action Controls -->
-        <div class="ar-panel hud-bracket rounded-md px-2.5 py-1 pointer-events-auto flex items-center gap-1.5 font-mono text-xs">
+        <div data-hud-panel="controls" class="ar-panel hud-bracket rounded-md px-2.5 py-1 pointer-events-auto flex items-center gap-1.5 font-mono text-xs">
           <!-- Transparency Control -->
           <div class="hidden lg:flex flex-col items-end mr-1">
             <span class="text-[8px] text-slate-300 uppercase">OPACIDAD HUD</span>
@@ -381,7 +439,7 @@
       </div>
 
       <!-- Ultra-slim Translucent Alert Strip -->
-      <div id="alert-banner" class="ar-warning rounded-full px-4 py-0.5 pointer-events-auto flex items-center gap-2.5 transition-all duration-300">
+      <div data-hud-panel="alert" id="alert-banner" class="ar-warning rounded-full px-4 py-0.5 pointer-events-auto flex items-center gap-2.5 transition-all duration-300">
         <i class="fa-solid fa-triangle-exclamation text-hud-pink animate-pulse text-[11px]"></i>
         <span id="alert-title" class="text-[11px] font-mono font-bold tracking-wider text-hud-pink uppercase">
           ENERGÍA CRÍTICA: SOL A <span id="alert-solar-deg">0.1</span>°
@@ -392,7 +450,7 @@
       </div>
 
       <!-- C&W (Caution & Warning) — Clases 1/2/3 + Fail-Safe -->
-      <div id="cw-banner" class="c3 rounded-full px-4 py-0.5 flex items-center gap-2.5 transition-all duration-300 border font-mono">
+      <div data-hud-panel="cw" id="cw-banner" class="c3 rounded-full px-4 py-0.5 flex items-center gap-2.5 transition-all duration-300 border font-mono">
         <i class="fa-solid fa-shield-halved text-[11px]"></i>
         <span id="cw-title" class="text-[11px] font-bold tracking-wider uppercase">CLASE 3 NOMINAL</span>
       </div>
@@ -400,10 +458,10 @@
     </header>
 
     <!-- ================= MIDDLE AREA: WIDE OPEN CENTRAL VIEWPORT & SLIM EDGE DOCKS ================= -->
-    <div class="flex-1 flex justify-between items-center my-1 relative">
+    <div id="hud-middle" class="flex-1 flex justify-between items-center my-1 relative">
 
       <!-- LEFT PERIPHERAL DOCK: ULTRA-COMPACT COLLAPSIBLE TELEMETRY & SENSORS -->
-      <aside id="left-hud-wing" class="w-48 md:w-52 flex flex-col gap-1.5 pointer-events-auto transition-all duration-300">
+      <aside data-hud-panel="left-wing" id="left-hud-wing" class="w-48 md:w-52 flex flex-col gap-1.5 pointer-events-auto transition-all duration-300">
         
         <!-- Telemetría Ambiental (Collapsible) -->
         <div class="ar-panel hud-bracket rounded-md p-2">
@@ -428,7 +486,7 @@
         </div>
 
         <!-- Sensores del Casco (Collapsible & Compact) -->
-        <div class="ar-panel hud-bracket rounded-md p-2 flex flex-col max-h-[42vh]">
+        <div id="sensors-panel" class="ar-panel hud-bracket rounded-md p-2 flex flex-col max-h-[42vh]">
           <button onclick="toggleSection('sensors-container')" class="w-full flex justify-between items-center border-b border-hud-pink/25 pb-1 mb-1.5">
             <span class="text-[9px] font-mono font-bold uppercase tracking-widest text-hud-pink">
               <i class="fa-solid fa-satellite-dish mr-1"></i> SENSORES
@@ -480,7 +538,7 @@
       </div>
 
       <!-- RIGHT PERIPHERAL DOCK: SLIM NAVIGATION, COMMS & SOLAR -->
-      <aside id="right-hud-wing" class="w-48 md:w-52 flex flex-col gap-1.5 pointer-events-auto transition-all duration-300">
+      <aside data-hud-panel="right-wing" id="right-hud-wing" class="w-48 md:w-52 flex flex-col gap-1.5 pointer-events-auto transition-all duration-300">
         
         <!-- Selección de Sitio y Waypoint de Navegación -->
         <div class="ar-panel hud-bracket rounded-md p-2 font-mono text-xs">
@@ -582,7 +640,7 @@
     <footer class="w-full flex flex-col sm:flex-row justify-between items-end gap-2">
       
       <!-- Bottom-Left: Slim 2-Line Telemetry Stream -->
-      <div class="ar-panel hud-bracket rounded-md p-1.5 pointer-events-auto w-full sm:w-64 font-mono text-[10px]">
+      <div data-hud-panel="syslog" class="ar-panel hud-bracket rounded-md p-1.5 pointer-events-auto w-full sm:w-64 font-mono text-[10px]">
         <div class="flex justify-between items-center text-[9px] text-hud-cyan border-b border-hud-cyan/15 pb-0.5 mb-0.5">
           <span><i class="fa-solid fa-person-walking mr-1"></i> EVA (WASD/RATÓN)</span>
           <span id="nav-speed-badge" class="text-hud-green font-bold">0.0 m/s</span>
@@ -597,7 +655,7 @@
       </div>
 
       <!-- Bottom-Center: Sleek Translucent Pill Controls -->
-      <div class="ar-panel rounded-full px-3 py-1 pointer-events-auto flex items-center gap-2 font-mono text-[11px]">
+      <div data-hud-panel="pill" class="ar-panel rounded-full px-3 py-1 pointer-events-auto flex items-center gap-2 font-mono text-[11px]">
         <button onmousedown="startMove('forward')" onmouseup="stopMove()" ontouchstart="startMove('forward')" ontouchend="stopMove()" class="px-2.5 py-0.5 hover:bg-hud-cyan/25 rounded-full text-hud-cyan border border-hud-cyan/30 active:bg-hud-cyan active:text-slate-950 font-bold" title="Avanzar (W)">
           <i class="fa-solid fa-arrow-up mr-0.5"></i> AVANZAR
         </button>
@@ -613,7 +671,7 @@
       </div>
 
       <!-- Bottom-Right: 3D HOLOGRAPHIC CRATER RADAR GLOBE (Compact & Translucent) -->
-      <div class="ar-panel hud-bracket rounded-lg p-1.5 pointer-events-auto flex items-center gap-2 relative">
+      <div data-hud-panel="radar" class="ar-panel hud-bracket rounded-lg p-1.5 pointer-events-auto flex items-center gap-2 relative">
         <div class="w-20 h-20 md:w-24 md:h-24 relative flex items-center justify-center">
           <div id="holo-globe-container" class="w-full h-full"></div>
           <span class="absolute bottom-0 text-[8px] font-mono text-hud-cyan uppercase tracking-widest bg-slate-950/45 px-1 rounded border border-hud-cyan/25">
@@ -633,6 +691,60 @@
             <button onclick="toggleBreadcrumbs()" id="btn-breadcrumbs" class="flex-1 py-0.5 px-1 bg-hud-cyan/15 border border-hud-cyan/40 text-hud-cyan rounded text-[8px] font-bold" title="Mostrar rastro de migas de pan de retorno">
               RASTRO ON
             </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Pantalla táctica de muñeca (TAB): integrada en la barra inferior -->
+      <div data-hud-panel="wrist" id="wrist-dock">
+        <button id="wrist-toggle" type="button">▲ MUÑECA (TAB)</button>
+        <div id="wrist-panel">
+          <div id="wrist-header">
+            <span class="wtitle">xEMU WRIST TERMINAL v4.2</span>
+            <span id="wrist-esp">ESP32: SIN PLACA</span>
+          </div>
+          <div id="wrist-tabs" role="tablist">
+            <button type="button" data-tab="0" role="tab">SENSORES</button>
+            <button type="button" data-tab="1" role="tab">NAVEGACIÓN</button>
+            <button type="button" data-tab="2" role="tab">AMBIENTE</button>
+            <button type="button" data-tab="3" role="tab">ESP32 / AR</button>
+          </div>
+          <div id="wrist-body">
+            <div class="wtab active" data-panel="0">
+              <div class="wgauge"><span class="gl">LIDAR FRONTAL</span><span class="gv" id="wv-lidar">12.0 m</span><div class="gbar"><i id="wb-lidar"></i></div></div>
+              <div class="wgauge"><span class="gl">PROXIMIDAD</span><span class="gv" id="wv-prox">4.1 m</span><div class="gbar"><i id="wb-prox"></i></div></div>
+              <div class="wgauge"><span class="gl">ULTRASÓNICO</span><span class="gv" id="wv-ultra">1.8 m</span><div class="gbar"><i id="wb-ultra"></i></div></div>
+              <div class="wgauge"><span class="gl">TÉRMICA</span><span class="gv" id="wv-temp">-50.3°C</span><div class="gbar"><i id="wb-temp"></i></div></div>
+              <div class="wgauge"><span class="gl">IR SUELO</span><span class="gv" id="wv-ir">-46.6°C</span><div class="gbar"><i id="wb-ir"></i></div></div>
+              <div class="wrow" id="w-esp32-row">ESP32: —</div>
+            </div>
+            <div class="wtab" data-panel="1">
+              <div class="wnlabel">SELECCIONAR DESTINO:</div>
+              <div id="wp-list">
+                <button type="button" data-wp="0">WP-01: LANDER BASE</button>
+                <button type="button" data-wp="1">WP-02: DEPOSITO HIELO SUR</button>
+                <button type="button" data-wp="2">WP-03: TORRE SOLAR</button>
+                <button type="button" data-wp="3">WP-04: ROVER VIPER</button>
+              </div>
+              <div class="winfo" id="w-astar-nav">A*: <b>—</b></div>
+              <div class="winfo" id="w-kcal-nav">KCAL: <b>—</b></div>
+              <div class="winfo" id="w-walkback-nav">O2 RETORNO: <b>—</b></div>
+            </div>
+            <div class="wtab" data-panel="2">
+              <div class="winfo" id="w-amb-temp">TEMP: <b>—</b></div>
+              <div class="winfo" id="w-amb-slope">PENDIENTE: <b>—</b></div>
+              <div class="winfo" id="w-amb-dust">POLVO: <b>—</b></div>
+              <div class="winfo" id="w-amb-solar">ELEV. SOLAR: <b>—</b></div>
+              <div class="winfo" id="w-amb-rad">RADIACIÓN: <b>—</b></div>
+              <div class="winfo" id="w-amb-batt">BATERÍA: <b>—</b></div>
+              <button class="wbtn" id="btn-storm" type="button">TORMENTA SOLAR</button>
+            </div>
+            <div class="wtab" data-panel="3">
+              <div class="winfo" id="w-esp-status">PUENTE: <b>—</b></div>
+              <button class="wbtn" id="btn-camara-wrist" type="button">ACTIVAR CÁMARA AR</button>
+              <div class="wnlabel">LOG DEL SISTEMA:</div>
+              <div id="wrist-log"></div>
+            </div>
           </div>
         </div>
       </div>
@@ -709,60 +821,6 @@
   <!-- ================= OVERLAY: MODO FAIL-SAFE (M) ================= -->
   <div id="hud-root-failsafe">
     <div id="failsafe-banner">MODO FAIL-SAFE<small>CONSUMO MÍNIMO — M PARA RESTAURAR</small></div>
-  </div>
-
-  <!-- ================= PANTALLA TÁCTICA DE MUÑECA (TAB) ================= -->
-  <div id="wrist-dock">
-    <button id="wrist-toggle" type="button">▲ PANTALLA DE MUÑECA (TAB)</button>
-    <div id="wrist-panel">
-      <div id="wrist-header">
-        <span class="wtitle">xEMU WRIST TERMINAL v4.2</span>
-        <span id="wrist-esp">ESP32: SIN PLACA</span>
-      </div>
-      <div id="wrist-tabs" role="tablist">
-        <button type="button" data-tab="0" role="tab">SENSORES</button>
-        <button type="button" data-tab="1" role="tab">NAVEGACIÓN</button>
-        <button type="button" data-tab="2" role="tab">AMBIENTE</button>
-        <button type="button" data-tab="3" role="tab">ESP32 / AR</button>
-      </div>
-      <div id="wrist-body">
-        <div class="wtab active" data-panel="0">
-          <div class="wgauge"><span class="gl">LIDAR FRONTAL</span><span class="gv" id="wv-lidar">12.0 m</span><div class="gbar"><i id="wb-lidar"></i></div></div>
-          <div class="wgauge"><span class="gl">PROXIMIDAD</span><span class="gv" id="wv-prox">4.1 m</span><div class="gbar"><i id="wb-prox"></i></div></div>
-          <div class="wgauge"><span class="gl">ULTRASÓNICO</span><span class="gv" id="wv-ultra">1.8 m</span><div class="gbar"><i id="wb-ultra"></i></div></div>
-          <div class="wgauge"><span class="gl">TÉRMICA</span><span class="gv" id="wv-temp">-50.3°C</span><div class="gbar"><i id="wb-temp"></i></div></div>
-          <div class="wgauge"><span class="gl">IR SUELO</span><span class="gv" id="wv-ir">-46.6°C</span><div class="gbar"><i id="wb-ir"></i></div></div>
-          <div class="wrow" id="w-esp32-row">ESP32: —</div>
-        </div>
-        <div class="wtab" data-panel="1">
-          <div class="wnlabel">SELECCIONAR DESTINO:</div>
-          <div id="wp-list">
-            <button type="button" data-wp="0">WP-01: LANDER BASE</button>
-            <button type="button" data-wp="1">WP-02: DEPOSITO HIELO SUR</button>
-            <button type="button" data-wp="2">WP-03: TORRE SOLAR</button>
-            <button type="button" data-wp="3">WP-04: ROVER VIPER</button>
-          </div>
-          <div class="winfo" id="w-astar-nav">A*: <b>—</b></div>
-          <div class="winfo" id="w-kcal-nav">KCAL: <b>—</b></div>
-          <div class="winfo" id="w-walkback-nav">O2 RETORNO: <b>—</b></div>
-        </div>
-        <div class="wtab" data-panel="2">
-          <div class="winfo" id="w-amb-temp">TEMP: <b>—</b></div>
-          <div class="winfo" id="w-amb-slope">PENDIENTE: <b>—</b></div>
-          <div class="winfo" id="w-amb-dust">POLVO: <b>—</b></div>
-          <div class="winfo" id="w-amb-solar">ELEV. SOLAR: <b>—</b></div>
-          <div class="winfo" id="w-amb-rad">RADIACIÓN: <b>—</b></div>
-          <div class="winfo" id="w-amb-batt">BATERÍA: <b>—</b></div>
-          <button class="wbtn" id="btn-storm" type="button">TORMENTA SOLAR</button>
-        </div>
-        <div class="wtab" data-panel="3">
-          <div class="winfo" id="w-esp-status">PUENTE: <b>—</b></div>
-          <button class="wbtn" id="btn-camara-wrist" type="button">ACTIVAR CÁMARA AR</button>
-          <div class="wnlabel">LOG DEL SISTEMA:</div>
-          <div id="wrist-log"></div>
-        </div>
-      </div>
-    </div>
   </div>
 
   <!-- ================= APPLICATION JAVASCRIPT ================= -->
@@ -868,7 +926,8 @@
 
     // --- Nuevas variables de módulo (DEM, corredor, Tierra, muñeca) ---
     let terrenoGlobal = null, terrenoSkirt = null, psrZoneMeshes = [];
-    let corridorGroup = null, corridorBezier = null, corridorChevrons = [];
+    let corridorGroup = null, corridorPath = [], corridorChevrons = [];
+    let lastCorridor = null; // último corredor A* calculado (para guiado de giro L/R)
     let earthMeshRef = null;
 
     // --- 2. MINI HOLOGRAPHIC 3D CRATER RADAR (BOTTOM-RIGHT) ---
@@ -920,6 +979,36 @@
       const hx = (getLunarTerrainHeight(x + e, z) - getLunarTerrainHeight(x - e, z)) / (2 * e);
       const hz = (getLunarTerrainHeight(x, z + e) - getLunarTerrainHeight(x, z - e)) / (2 * e);
       return Math.atan(Math.sqrt(hx * hx + hz * hz)) * 180 / Math.PI;
+    }
+
+    // --- Estado de entrada de movimiento (WASD/flechas) + arrastre de mirada ---
+    // Pila ordenada de direcciones mantenidas: soltar una tecla no detiene el
+    // movimiento si otra sigue pulsada, y permite limpiar todo en blur /
+    // visibilitychange (evita el "caminar atascado" tras alt-tab).
+    const heldMovement = [];
+    let lookDragging = false;
+    let lookPrevX = 0, lookPrevY = 0;
+
+    function dirFromKey(key) {
+      const k = (key || '').toLowerCase();
+      if (k === 'w' || k === 'arrowup') return 'forward';
+      if (k === 's' || k === 'arrowdown') return 'backward';
+      if (k === 'a' || k === 'arrowleft') return 'left';
+      if (k === 'd' || k === 'arrowright') return 'right';
+      return null;
+    }
+
+    function isEditableTarget(el) {
+      if (!el) return false;
+      const tag = el.tagName;
+      return tag === 'INPUT' || tag === 'SELECT' || tag === 'TEXTAREA' || el.isContentEditable;
+    }
+
+    function clearMovementInput() {
+      heldMovement.length = 0;
+      state.moveDir = null;
+      state.velTurn = 0;  // frena el giro residual (anti "girar atascado")
+      lookDragging = false;
     }
 
     function initFirstPersonWorld() {
@@ -1062,40 +1151,72 @@
         pipRenderer.setSize(pipCanvas.clientWidth || 180, pipCanvas.clientHeight || 80);
       }
 
-      // Mouse look drag on viewport
-      let dragging = false;
-      let prevX = 0, prevY = 0;
-      window.addEventListener('mousedown', (e) => {
-        if (e.target.closest('.pointer-events-auto')) return;
-        dragging = true;
-        prevX = e.clientX;
-        prevY = e.clientY;
+      // Mouse/touch look drag on viewport (Pointer Events: captura + deltas suavizados)
+      const viewportEl = document.getElementById('fpv-viewport');
+
+      function endLookDrag() { lookDragging = false; }
+
+      window.addEventListener('pointerdown', (e) => {
+        if (e.target && e.target.closest && e.target.closest('.pointer-events-auto')) return;
+        lookDragging = true;
+        lookPrevX = e.clientX;
+        lookPrevY = e.clientY;
+        try { if (e.target && typeof e.target.setPointerCapture === 'function') e.target.setPointerCapture(e.pointerId); } catch (err) { /* captura opcional */ }
       });
-      window.addEventListener('mousemove', (e) => {
-        if (!dragging) return;
-        const dx = e.clientX - prevX;
-        const dy = e.clientY - prevY;
-        state.heading = (state.heading + dx * 0.22 + 360) % 360;
-        state.pitch = Math.max(-40, Math.min(40, state.pitch - dy * 0.18));
-        state.roll = Math.max(-8, Math.min(8, -dx * 0.12));
-        prevX = e.clientX;
-        prevY = e.clientY;
+      window.addEventListener('pointermove', (e) => {
+        if (!lookDragging) return;
+        // Deltas coalescidos (movimiento real del dispositivo) + recorte por evento
+        // para evitar saltos bruscos cuando el puntero re-entra en la ventana.
+        let events = (typeof e.getCoalescedEvents === 'function') ? e.getCoalescedEvents() : [];
+        if (!events || !events.length) events = [e];
+        for (let i = 0; i < events.length; i++) {
+          const ev = events[i];
+          let dx = ev.clientX - lookPrevX;
+          let dy = ev.clientY - lookPrevY;
+          dx = Math.max(-60, Math.min(60, dx));
+          dy = Math.max(-60, Math.min(60, dy));
+          state.heading = (state.heading + dx * 0.22 + 360) % 360;
+          state.pitch = Math.max(-40, Math.min(40, state.pitch - dy * 0.18));
+          state.roll = Math.max(-8, Math.min(8, -dx * 0.12));
+          lookPrevX = ev.clientX;
+          lookPrevY = ev.clientY;
+        }
       });
+      window.addEventListener('pointerup', endLookDrag);
+      window.addEventListener('pointercancel', endLookDrag);
+      // Evitar salto de mirada al re-entrar la ventana/canvas con el puntero
+      window.addEventListener('pointerenter', () => { lookDragging = false; });
+      if (viewportEl) viewportEl.addEventListener('pointerleave', endLookDrag);
+
       // Keyboard WASD + E (LIDAR Scan) + SPACE (Spectrometer)
       window.addEventListener('keydown', (e) => {
-        if (e.target.tagName === 'INPUT') return;
+        if (isEditableTarget(e.target)) return;      // ignorar si el foco está en un input
+        if (e.ctrlKey || e.metaKey || e.altKey) return; // ignorar con modificadores
+        const dir = dirFromKey(e.key);
+        if (dir) {
+          if (!e.repeat) {                            // guardia anti auto-repetición
+            const idx = heldMovement.indexOf(dir);
+            if (idx !== -1) heldMovement.splice(idx, 1);
+            heldMovement.push(dir);                   // la tecla más reciente manda
+          }
+          state.moveDir = dir;
+          return;
+        }
         const k = e.key.toLowerCase();
-        if (k === 'w' || k === 'arrowup') state.moveDir = 'forward';
-        if (k === 's' || k === 'arrowdown') state.moveDir = 'backward';
-        if (k === 'a' || k === 'arrowleft') state.moveDir = 'left';
-        if (k === 'd' || k === 'arrowright') state.moveDir = 'right';
         if (k === 'e') triggerLidarScanWave();
         if (e.code === 'Space') {
           e.preventDefault();
           triggerSpectrometerScan();
         }
       });
-      window.addEventListener('keyup', () => state.moveDir = null);
+      window.addEventListener('keyup', (e) => {
+        const dir = dirFromKey(e.key);
+        if (dir) {
+          const idx = heldMovement.indexOf(dir);
+          if (idx !== -1) heldMovement.splice(idx, 1);
+          state.moveDir = heldMovement.length ? heldMovement[heldMovement.length - 1] : null;
+        }
+      });
     }
 
     function initMiniHoloGlobe() {
@@ -1429,8 +1550,12 @@
       const nowMs = performance.now();
       const lastMs = animateLoop.lastMs || nowMs;
       animateLoop.lastMs = nowMs;
-      const dt = Math.min(0.1, (nowMs - lastMs) / 1000);
-      const f = dt * 60; // factor de normalización a 60 FPS
+      // ANTI-TELEPORT: una pausa larga (pestaña en segundo plano / alt-tab) no debe
+      // disparar la física y teletransportar al astronauta. Se recorta dt a 0.05 s
+      // y se tapa el factor f a 3. Las constantes de física (0.24 / -0.16 / ±1.4 /
+      // 0.08 / 0.12) y las fórmulas de integración NO se modifican.
+      const dt = Math.min(0.05, (nowMs - lastMs) / 1000);
+      const f = Math.min(3, dt * 60); // factor de normalización a 60 FPS (cap anti-teleport)
 
       // Smooth 1/6G Lunar Walking Inertia & Head-Bobbing
       const targetVel = state.moveDir === 'forward' ? 0.24 : (state.moveDir === 'backward' ? -0.16 : 0);
@@ -2690,6 +2815,7 @@
     // (2) CORREDOR 2 FLECHAS + A* METABÓLICO (3D)
     // ============================================================
     const ASTAR_GW = 21, ASTAR_GH = 15, ASTAR_CELL = 1.2;
+    const ASTAR_IMPASSABLE_COST = 8.0; // células con coste >= esto se consideran intransitables
     let corridorIsWarning = false;
 
     function cellToWorld(c, r, headingRad) {
@@ -2703,10 +2829,19 @@
 
     function aStarCellCost(c, r, headingRad) {
       const w = cellToWorld(c, r, headingRad);
-      let cost = 1.0 + 0.35 * Math.max(0, terrainSlopeDeg(w.x, w.z));
+      const slope = terrainSlopeDeg(w.x, w.z);
+      let cost = 1.0 + 0.35 * Math.max(0, slope);
+      // HARD penalty: laderas >25° casi intransitables para el traje
+      if (slope > 25) cost += 6.0;
       for (let i = 0; i < lunarRocks.length; i++) {
         const rk = lunarRocks[i];
-        if (Math.hypot(rk.position.x - w.x, rk.position.z - w.z) < rk.userData.radius + 0.6) { cost += 8.0; break; }
+        const dist = Math.hypot(rk.position.x - w.x, rk.position.z - w.z);
+        const margin = rk.userData.radius + 0.6;
+        if (dist < margin) {
+          // Penalización proporcional a la profundidad de intrusión de la roca
+          // en la celda (clampada), en vez de un +8.0 plano booleano.
+          cost += clamp((margin - dist) / 0.6, 0, 1) * 8.0;
+        }
       }
       return cost;
     }
@@ -2739,17 +2874,34 @@
       const headingRad = state.heading * Math.PI / 180;
       const wp = state.waypoints[state.activeWaypointIdx];
       const dx = wp.x - state.posX, dz = wp.z - state.posZ;
-      const u = dx * Math.sin(headingRad) - dz * Math.cos(headingRad);
-      const v = dx * Math.cos(headingRad) + dz * Math.sin(headingRad);
-      const goalR = clamp(Math.round(u / ASTAR_CELL), 0, ASTAR_GH - 1);
-      const goalC = clamp(Math.round((ASTAR_GW - 1) / 2 + v / ASTAR_CELL), 0, ASTAR_GW - 1);
+      const u = dx * Math.sin(headingRad) - dz * Math.cos(headingRad); //Avance (hacia donde mira)
+      const v = dx * Math.cos(headingRad) + dz * Math.sin(headingRad); // Lateral
       const startC = (ASTAR_GW - 1) / 2, startR = 0;
+
+      // Objetivo = intersección del rayo hacia el waypoint con el borde del grid
+      // local (así la ruta apunta a la Bearing real, no al borde frontal).
+      const maxFwd = (ASTAR_GH - 1) * ASTAR_CELL;
+      const maxLat = ((ASTAR_GW - 1) / 2) * ASTAR_CELL;
+      let goalR, goalC, targetBehind = false;
+      if (u > 0.5) {
+        const t = Math.min(maxFwd / u, maxLat / Math.max(Math.abs(v), 1e-3));
+        goalR = clamp(Math.round((u * t) / ASTAR_CELL), 1, ASTAR_GH - 1);
+        goalC = clamp(Math.round(startC + (v * t) / ASTAR_CELL), 0, ASTAR_GW - 1);
+      } else {
+        // El waypoint queda ATRÁS del astronauta: no hay celda alcanzable hacia él.
+        // Se guía una maniobra de vuelta (curva lateral) y se avisa con el giro.
+        targetBehind = true;
+        goalR = 0;
+        const lateral = (v >= 0 ? 1 : -1) * Math.min(Math.abs(v) / ASTAR_CELL, (ASTAR_GW - 1) / 2);
+        goalC = clamp(Math.round(startC + (Math.abs(lateral) > 0.5 ? lateral : (v >= 0 ? 4 : -4))), 0, ASTAR_GW - 1);
+        if (goalC === startC) goalC = clamp(startC + (v >= 0 ? 4 : -4), 0, ASTAR_GW - 1);
+      }
       const startKey = startR * ASTAR_GW + startC, goalKey = goalR * ASTAR_GW + goalC;
 
       const costs = new Float32Array(ASTAR_GW * ASTAR_GH);
       for (let r = 0; r < ASTAR_GH; r++) for (let c = 0; c < ASTAR_GW; c++) costs[r * ASTAR_GW + c] = aStarCellCost(c, r, headingRad);
 
-      if (startKey === goalKey) return { path: [[startC, startR]], costAstar: costs[startKey], costDirect: costs[startKey] };
+      if (startKey === goalKey) return { path: [[startC, startR]], costAstar: costs[startKey], costDirect: costs[startKey], costs, targetBehind };
 
       const gScore = new Float32Array(ASTAR_GW * ASTAR_GH).fill(Infinity);
       const cameFrom = new Int32Array(ASTAR_GW * ASTAR_GH).fill(-1);
@@ -2775,6 +2927,13 @@
             const nkey = nr * ASTAR_GW + nc;
             if (closed[nkey]) continue;
             const diag = (dr !== 0 && dc !== 0);
+            if (diag) {
+              // Prevenir corte de esquina: no moverse en diagonal entre dos
+              // vecinos ortogonales intransitables (ambos de alto coste).
+              const orthA = rr * ASTAR_GW + (c + dc);   // celda (c+dc, r)
+              const orthB = (rr + dr) * ASTAR_GW + c;   // celda (c, r+dr)
+              if (costs[orthA] >= ASTAR_IMPASSABLE_COST && costs[orthB] >= ASTAR_IMPASSABLE_COST) continue;
+            }
             const step = (diag ? sq2 : 1) * costs[nkey];
             const tentative = gScore[key] + step;
             if (tentative < gScore[nkey]) {
@@ -2785,7 +2944,7 @@
           }
         }
       }
-      if (!found) return { path: null, costAstar: 0, costDirect: 0 };
+      if (!found) return { path: null, costAstar: 0, costDirect: 0, costs, targetBehind };
 
       const path = [];
       let k = goalKey;
@@ -2796,7 +2955,64 @@
       }
       path.reverse();
       const costDirect = astarDirectCost(startC, startR, goalC, goalR, costs);
-      return { path, costAstar: gScore[goalKey], costDirect };
+      return { path, costAstar: gScore[goalKey], costDirect, costs, targetBehind };
+    }
+
+    // Simplifica una ruta A* de celdas: colapsa tramos colineales y conserva las
+    // primeras `maxCells` celdas relevantes.
+    function simplifyCellPath(cells, maxCells) {
+      if (!cells || cells.length < 2) return cells || [];
+      const out = [cells[0]];
+      for (let i = 1; i < cells.length; i++) {
+        const cur = cells[i];
+        if (out.length >= 2) {
+          const prev = out[out.length - 1];
+          const prev2 = out[out.length - 2];
+          const d1c = prev[0] - prev2[0], d1r = prev[1] - prev2[1];
+          const d2c = cur[0] - prev[0], d2r = cur[1] - prev[1];
+          if (d1c === d2c && d1r === d2r) {
+            out[out.length - 1] = cur; // extiende el tramo colineal
+            continue;
+          }
+        }
+        out.push(cur);
+        if (out.length >= maxCells) break;
+      }
+      return out;
+    }
+
+    // Muestrea una polilínea suave (Catmull-Rom) a través de `pts` ({x,z}) con
+    // ~`totalSamples` puntos.
+    function samplePathSmooth(pts, totalSamples) {
+      if (!pts || !pts.length) return [];
+      if (pts.length === 1) return [pts[0]];
+      if (pts.length === 2) {
+        const out = [];
+        for (let i = 0; i < totalSamples; i++) {
+          const t = i / (totalSamples - 1);
+          out.push({ x: pts[0].x + (pts[1].x - pts[0].x) * t, z: pts[0].z + (pts[1].z - pts[0].z) * t });
+        }
+        return out;
+      }
+      const out = [];
+      const segs = pts.length - 1;
+      const per = Math.max(1, Math.round(totalSamples / segs));
+      for (let i = 0; i < segs; i++) {
+        const p0 = pts[Math.max(0, i - 1)];
+        const p1 = pts[i];
+        const p2 = pts[i + 1];
+        const p3 = pts[Math.min(pts.length - 1, i + 2)];
+        const cnt = (i === segs - 1) ? Math.max(1, totalSamples - out.length) : per;
+        for (let j = 0; j < cnt; j++) {
+          const t = cnt === 1 ? 0.5 : j / (cnt - 1);
+          const t2 = t * t, t3 = t2 * t;
+          out.push({
+            x: 0.5 * ((2 * p1.x) + (-p0.x + p2.x) * t + (2 * p0.x - 5 * p1.x + 4 * p2.x - p3.x) * t2 + (-p0.x + 3 * p1.x - 3 * p2.x + p3.x) * t3),
+            z: 0.5 * ((2 * p1.z) + (-p0.z + p2.z) * t + (2 * p0.z - 5 * p1.z + 4 * p2.z - p3.z) * t2 + (-p0.z + 3 * p1.z - 3 * p2.z + p3.z) * t3)
+          });
+        }
+      }
+      return out;
     }
 
     function computeCorridor() {
@@ -2812,14 +3028,15 @@
       const corridorLen = Math.min(Math.max(distGoal, 4.5), 12.0);
 
       const astar = runAstar();
-      let p1x, p1z;
+
+      // Ruta A* real: simplificar (colineales), convertir celdas a mundo, y usar
+      // el PRIMER waypoint (tras el origen) para el guiado de giro L/R.
+      let pathPoints = null;
+      let firstWaypoint = null;
       if (astar && astar.path && astar.path.length > 2) {
-        const mid = astar.path[Math.floor(astar.path.length * 0.45)];
-        const wmid = cellToWorld(mid[0], mid[1], lookRad);
-        p1x = wmid.x; p1z = wmid.z;
-      } else {
-        p1x = state.posX + Math.sin(lookRad) * corridorLen * 0.42;
-        p1z = state.posZ - Math.cos(lookRad) * corridorLen * 0.42;
+        const cells = simplifyCellPath(astar.path, 8);
+        pathPoints = cells.map(c => cellToWorld(c[0], c[1], lookRad));
+        if (pathPoints.length > 1) firstWaypoint = { x: pathPoints[1].x, z: pathPoints[1].z };
       }
 
       if (astar && astar.costDirect > 0) {
@@ -2833,11 +3050,20 @@
       const goalDir = lookRad + clampedTurn;
       const p2 = { x: state.posX + Math.sin(goalDir) * corridorLen, z: state.posZ - Math.cos(goalDir) * corridorLen };
 
+      // Corredor = p0 -> celdas A* (sin el origen) -> [p2 solo como respaldo]
+      let waypoints;
+      if (pathPoints && pathPoints.length > 1) {
+        waypoints = [p0];
+        for (let i = 1; i < pathPoints.length; i++) waypoints.push(pathPoints[i]);
+      } else {
+        waypoints = [p0, p2];
+      }
+
       const isHazard = state.rockInPathDist < 2.6;
       const isWarning = absErrDeg > 12 || isHazard;
       const isCritical = absErrDeg > 32 || isHazard;
 
-      return { p0, p1: { x: p1x, z: p1z }, p2, absErrDeg, headingErr, distGoal, isWarning, isCritical, corridorLen };
+      return { p0, p2, waypoints, firstWaypoint, absErrDeg, headingErr, distGoal, isWarning, isCritical, corridorLen, astar };
     }
 
     function buildCorridor3D(corr) {
@@ -2851,25 +3077,29 @@
       fpvScene.add(corridorGroup);
 
       const steps = 22;
-      const p0 = corr.p0, p1 = corr.p1, p2 = corr.p2;
-      corridorBezier = { p0: { x: p0.x, z: p0.z }, p1: { x: p1.x, z: p1.z }, p2: { x: p2.x, z: p2.z } };
+      corridorPath = samplePathSmooth(corr.waypoints, steps + 1);
       corridorChevrons = [];
+
+      // Tangente local en cada punto muestreado (diferencia central)
+      function tangentAt(i) {
+        const n = corridorPath.length;
+        const a = corridorPath[Math.max(0, i - 1)];
+        const b = corridorPath[Math.min(n - 1, i + 1)];
+        return Math.atan2(b.x - a.x, -(b.z - a.z));
+      }
 
       for (let lane = 0; lane < 2; lane++) {
         const laneOffset = lane === 0 ? -0.52 : 0.52;
         const positions = [];
         const colors = [];
-        for (let i = 0; i <= steps; i++) {
-          const t = i / steps, inv = 1 - t;
-          const bx = inv * inv * p0.x + 2 * inv * t * p1.x + t * t * p2.x;
-          const bz = inv * inv * p0.z + 2 * inv * t * p1.z + t * t * p2.z;
-          const tx = 2 * inv * (p1.x - p0.x) + 2 * t * (p2.x - p1.x);
-          const tz = 2 * inv * (p1.z - p0.z) + 2 * t * (p2.z - p1.z);
-          const tangent = Math.atan2(tx, -tz);
-          const perp = tangent + Math.PI * 0.5;
-          const curLane = laneOffset * (1 - t * 0.26);
-          const ccx = bx + Math.sin(perp) * curLane;
-          const ccz = bz - Math.cos(perp) * curLane;
+        const total = corridorPath.length - 1;
+        for (let i = 0; i < corridorPath.length; i++) {
+          const pt = corridorPath[i];
+          const t = total > 0 ? i / total : 0;
+          const tangent = tangentAt(i);
+          const perp = tangent + Math.PI * 0.5; // normal LOCAL a la tangente del camino
+          const ccx = pt.x + Math.sin(perp) * laneOffset;
+          const ccz = pt.z - Math.cos(perp) * laneOffset;
           const cy = getLunarTerrainHeight(ccx, ccz) + 0.35;
           positions.push(ccx, cy, ccz);
           let r, g, b;
@@ -2900,19 +3130,24 @@
 
     function animateCorridorChevrons() {
       requestAnimationFrame(animateCorridorChevrons);
-      if (!corridorBezier || !corridorGroup || !fpvScene) return;
+      if (!corridorPath || !corridorPath.length || !corridorGroup || !fpvScene) return;
       const now = performance.now() * 0.001;
-      const p0 = corridorBezier.p0, p1 = corridorBezier.p1, p2 = corridorBezier.p2;
       const bases = [0.10, 0.24, 0.38];
+      const n = corridorPath.length;
       for (let i = 0; i < corridorChevrons.length; i++) {
         const ch = corridorChevrons[i];
         const t = fmod(bases[i] + now * 0.18, 1.0);
-        const inv = 1 - t;
-        const bx = inv * inv * p0.x + 2 * inv * t * p1.x + t * t * p2.x;
-        const bz = inv * inv * p0.z + 2 * inv * t * p1.z + t * t * p2.z;
-        const tx = 2 * inv * (p1.x - p0.x) + 2 * t * (p2.x - p1.x);
-        const tz = 2 * inv * (p1.z - p0.z) + 2 * t * (p2.z - p1.z);
-        const tangent = Math.atan2(tx, -tz);
+        const idx = t * (n - 1);
+        const i0 = Math.floor(idx);
+        const i1 = Math.min(n - 1, i0 + 1);
+        const frac = idx - i0;
+        const a = corridorPath[i0], b = corridorPath[i1];
+        const bx = a.x + (b.x - a.x) * frac;
+        const bz = a.z + (b.z - a.z) * frac;
+        // Tangente local (dirección real del camino) para orientar el chevron
+        const prev = corridorPath[Math.max(0, i0 - 1)];
+        const next = corridorPath[Math.min(n - 1, i1 + 1)];
+        const tangent = Math.atan2(next.x - prev.x, -(next.z - prev.z));
         const y = getLunarTerrainHeight(bx, bz) + 0.38;
         ch.position.set(bx, y, bz);
         ch.rotation.y = Math.PI / 2 - tangent;
@@ -3319,24 +3554,43 @@
       updateRockInPath();
       updateWalkback();
 
-      // error de rumbo (barato, cada tick)
-      const wp = state.waypoints[state.activeWaypointIdx];
-      const dx = wp.x - state.posX, dz = wp.z - state.posZ;
-      const lookRad = state.heading * Math.PI / 180;
-      const targetRad = Math.atan2(dx, -dz);
-      let headingErr = targetRad - lookRad;
-      while (headingErr > Math.PI) headingErr -= Math.PI * 2;
-      while (headingErr < -Math.PI) headingErr += Math.PI * 2;
-      const absErrDeg = Math.abs(headingErr * 180 / Math.PI);
+      // error de rumbo: desde la DIRECCIÓN DEL PRIMER WAYPOINT del corredor A*
+      // (no solo del objetivo lejano), para que el consejo L/R coincida con la
+      // ruta que el astronauta va a tomar realmente.
+      let headingErr, absErrDeg;
+      if (lastCorridor && lastCorridor.firstWaypoint) {
+        const fw = lastCorridor.firstWaypoint;
+        const fdx = fw.x - state.posX, fdz = fw.z - state.posZ;
+        const fTargetRad = Math.atan2(fdx, -fdz);
+        const lookRad = state.heading * Math.PI / 180;
+        headingErr = fTargetRad - lookRad;
+        while (headingErr > Math.PI) headingErr -= Math.PI * 2;
+        while (headingErr < -Math.PI) headingErr += Math.PI * 2;
+      } else {
+        const wp = state.waypoints[state.activeWaypointIdx];
+        const dx = wp.x - state.posX, dz = wp.z - state.posZ;
+        const lookRad = state.heading * Math.PI / 180;
+        const targetRad = Math.atan2(dx, -dz);
+        headingErr = targetRad - lookRad;
+        while (headingErr > Math.PI) headingErr -= Math.PI * 2;
+        while (headingErr < -Math.PI) headingErr += Math.PI * 2;
+      }
+      absErrDeg = Math.abs(headingErr * 180 / Math.PI);
       state.lastCorridorAbsErrDeg = absErrDeg;
       state.lastHeadingErr = headingErr;
 
-      // re-ruta A* cada 1.5 s o si error > 20°
-      if (now - state.lastRepathTs > 1500 || absErrDeg > 20) {
+      // re-ruta A*: cadencia ~400 ms, o si se ha movido >0.75 m, o si el error
+      // de rumbo >8°, o si cambió el waypoint activo.
+      const repathMoved = Math.hypot(state.posX - state._lastRepathPosX, state.posZ - state._lastRepathPosZ);
+      const repathWpChanged = state._lastRepathWpIdx !== state.activeWaypointIdx;
+      if (now - state.lastRepathTs > 400 || repathMoved > 0.75 || absErrDeg > 8 || repathWpChanged) {
         state.lastRepathTs = now;
-        const corr = computeCorridor();
-        corridorIsWarning = corr.isWarning || corr.isCritical;
-        buildCorridor3D(corr);
+        state._lastRepathPosX = state.posX;
+        state._lastRepathPosZ = state.posZ;
+        state._lastRepathWpIdx = state.activeWaypointIdx;
+        lastCorridor = computeCorridor();
+        corridorIsWarning = lastCorridor.isWarning || lastCorridor.isCritical;
+        buildCorridor3D(lastCorridor);
       }
       state.o2SavedPct += (state.o2SavedTarget - state.o2SavedPct) * 0.1;
 
@@ -3357,6 +3611,9 @@
       state.lastRepathTs = 0;
       state.lastEspRx = 0;
       state.lastEarthFetch = performance.now();
+      state._lastRepathPosX = state.posX;
+      state._lastRepathPosZ = state.posZ;
+      state._lastRepathWpIdx = state.activeWaypointIdx;
       setInterval(tacticalTick, 250);
       requestAnimationFrame(animateCorridorChevrons);
     }
@@ -3364,6 +3621,13 @@
     window.addEventListener('keydown', (e) => {
       if (e.key === 'Tab') { e.preventDefault(); toggleWrist(); return; }
       if (e.key.toLowerCase() === 'm') { toggleFailsafe(); return; }
+    });
+
+    // ---- Estabilidad de navegación: limpiar entrada al perder foco/ocultarse ----
+    // Evita el "caminar/girar atascado" cuando se pierde el keyup (alt-tab, etc.).
+    window.addEventListener('blur', clearMovementInput);
+    document.addEventListener('visibilitychange', () => {
+      if (document.hidden) clearMovementInput();
     });
 
     // ---- Exposición para verificación (solo lectura de estado) ----
@@ -3378,6 +3642,8 @@
       get scene() { return fpvScene; },
       get terrain() { return fpvTerrain; },
       get corridor() { return corridorGroup; },
+      get corridorPath() { return corridorPath; },
+      get lastCorridor() { return lastCorridor; },
       get earth() { return earthGroup; },
       get rocks() { return lunarRocks; },
       get demLoaded() { return !!(demData && demMeta); }

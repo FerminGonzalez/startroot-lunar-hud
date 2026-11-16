@@ -55,6 +55,8 @@ Además: telémetro láser en retícula, cámara trasera 180°, pantalla táctic
 
 **👉 https://gestion2026.online** — abrir y caminar. Sin instalación, sin cuenta, sin backend.
 
+**Baraja de presentación (7 diapositivas, ES/EN con conmutador):** https://gestion2026.online/diapositivas.html
+
 | Tecla | Acción |
 |---|---|
 | `W A S D` / arrastrar ratón | Caminar / mirar |
@@ -124,6 +126,10 @@ Endpoints locales: `/api/status`, `/api/horizons?body=sun|earth`, `/api/dem`, `/
 | DEM servido por el dominio propio | HTTP 200, **524 288 bytes** exactos, altitud en vivo **758,4 m LRO** |
 | Efemérides en vivo | Sol **AZ 264,4° / EL −73,7°**, Tierra **EL +3,4°** → `DTE TIERRA` |
 | Caminata 1/6 G | desplazamiento >100 m en prueba sintética, `velForward` 0,24 |
+| **Precisión del corredor A\*** | desviación máxima corridor↔ruta A\* = **1,30 m** (antes 7,87 m con el corredor de un solo punto de control) |
+| Estabilidad de entrada | `blur`/cambio de pestaña limpian el estado de teclas (sin "caminar atascado"); reanudar funciona |
+| HUD responsive | 11 paneles dentro del viewport y sin solapes en 1920×1080, 1600×900, 1366×768, 1280×800, 1024×768 y 390×844 |
+| Baraja ES/EN | 7 diapositivas, 0 recortes en 6 viewports × 2 idiomas, enlaces de demo y repo verificados (HTTP 200) |
 | Fail-safe (M / auto) | entrada y salida verificadas, `grayscale(1)` aplicado |
 | Worker de efemérides | HTTP 200, `Access-Control-Allow-Origin: *`, bloque `$$SOE` parseado |
 | Firmware | compilado contra stub Arduino con clang++ (0 warnings / 0 errores), 13 casos de parser + 63 frames uplink validados con `json.loads` |
@@ -150,7 +156,7 @@ datos_reales/                   ← DEM binario, metadatos y script de procesado
 simulador_caminata.cpp          ← travesía C++ de 41 km
 datos_caminata.json             ← migas de la travesía
 assets/hero.png                 ← captura real de la demo
-docs/                           ← guion de presentación (7 diapositivas)
+docs/                           ← guion de presentación (7 diapositivas, ES) + versión EN
 ```
 
 ## 9. Roadmap
