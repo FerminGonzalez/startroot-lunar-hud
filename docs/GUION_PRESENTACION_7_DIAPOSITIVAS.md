@@ -1,7 +1,7 @@
 #presentación
 
 
-## Diapositiva 1 · Portada — «VISOR LUNAR» (0:00 – 0:20)
+## Diapositiva 1 · Portada — «VISOR LUNAR» 
 
 > «No es un panel de instrumentos. Trajimos un casco. Un visor donde la decisión aparece dibujada sobre el suelo que vas a pisar. Ábrelo y camina: sin instalar, sin registro, sin servidor.»
 
